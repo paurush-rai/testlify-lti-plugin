@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ltiuser
+      POSTGRES_PASSWORD: ltipassword
+      POSTGRES_DB: ltidb
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  lti-server:
+    build: ./lti-server
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=ltiuser
+      - DB_PASS=ltipassword
+      - DB_NAME=ltidb
+      - PORT=4000
+      - LTI_KEY=${LTI_KEY:-DEV_KEY_CHANGE_ME}
+      - UI_URL=${UI_URL:-http://localhost:3000}
+      - LMS_ISSUER_URL=${LMS_ISSUER_URL}
+      - LMS_CLIENT_ID=${LMS_CLIENT_ID}
+      - LMS_AUTH_URL=${LMS_AUTH_URL}
+      - LMS_TOKEN_URL=${LMS_TOKEN_URL}
+      - LMS_KEYSET_URL=${LMS_KEYSET_URL}
+    depends_on:
+      - postgres
+
+  ui-client:
+    build: ./ui-client
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=${API_URL:-http://lti-server:4000}
+    depends_on:
+      - lti-server
+
+volumes:
+  pgdata:
