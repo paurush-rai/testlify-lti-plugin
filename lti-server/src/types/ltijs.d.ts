@@ -15,8 +15,8 @@ declare module "ltijs" {
       ) => Promise<any>,
     ): void;
     static deploy(options: {
-      port: number;
-      serverless: boolean;
+      port?: number;
+      serverless?: boolean;
     }): Promise<void>;
     static registerPlatform(config: any): Promise<void>;
     static NamesAndRoles: {

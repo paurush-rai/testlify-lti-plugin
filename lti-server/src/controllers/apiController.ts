@@ -386,6 +386,9 @@ export const getCandidates =
         const scoreEntry = ltiScores.find((s: any) => s.userId === a.studentId);
         const hasScore = !!scoreEntry;
 
+        let status: string | undefined;
+        let grade: number | undefined;
+
         if (hasScore) {
           status =
             scoreEntry.activityProgress === "Completed"
