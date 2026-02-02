@@ -6,8 +6,6 @@ export const metadata: Metadata = {
   description: "Next.js + Node.js LTI Tool",
 };
 
-import { Toaster } from "@/components/ui/toaster";
-
 export default function RootLayout({
   children,
 }: {
@@ -15,10 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {children}
-        <Toaster />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

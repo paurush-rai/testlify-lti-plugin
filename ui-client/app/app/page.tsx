@@ -2,191 +2,102 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Header from "@/components/lti/Header";
-import AssessmentsTable from "@/components/lti/AssessmentsTable";
-import AssignModal from "@/components/lti/AssignModal";
-import ViewAssignedModal from "@/components/lti/ViewAssignedModal";
-import {
-  fetchUserData,
-  fetchAssessments,
-  fetchMembers,
-  fetchAssignedStudents,
-  getAssessmentId,
-} from "@/lib/api";
-import type { User, Assessment, Student } from "@/types/lti";
 
 export default function LtiApp() {
-  const [user, setUser] = useState<User | null>(null);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [members, setMembers] = useState<Student[]>([]);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [isViewAssignedModalOpen, setIsViewAssignedModalOpen] = useState(false);
-  const [selectedAssessment, setSelectedAssessment] =
-    useState<Assessment | null>(null);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [assignedStudents, setAssignedStudents] = useState<Student[]>([]);
-  const [loadingAssigned, setLoadingAssigned] = useState(false);
-
   const searchParams = useSearchParams();
   const ltik = searchParams.get("ltik");
 
   useEffect(() => {
     if (!ltik) {
       console.log("No LTIK found in URL");
-      setLoading(false);
-      return;
     }
 
-    const loadData = async () => {
-      try {
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${ltik}`,
-        };
-
-        const [userData, assessmentsData, membersData] = await Promise.all([
-          fetchUserData(headers),
-          fetchAssessments(headers),
-          fetchMembers(headers),
-        ]);
-
-        setUser(userData);
-        setAssessments(assessmentsData);
-        setMembers(membersData);
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Failed to load LTI session.");
-      } finally {
+    fetch("/api/me", {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: ltik ? `Bearer ${ltik}` : "",
+      },
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Unauthorized or session expired");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setUser(data);
         setLoading(false);
-      }
-    };
-
-    loadData();
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to load LTI session. Please relaunch from LMS.");
+        setLoading(false);
+      });
   }, [ltik]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loading-spinner"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-red-200 max-w-md text-center">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="h-6 w-6 text-red-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="glass-card p-8 text-center border-red-500/30">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">
             Connection Error
           </h2>
-          <p className="text-gray-600">{error}</p>
+          <p>{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+    <div className="min-h-screen p-8">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold">Welcome, {user?.name || "User"}</h1>
+        <p className="text-gray-400">
+          Role: {user?.roles?.join(", ") || "Student"}
+        </p>
+      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Assessments{" "}
-            <span className="text-lg font-normal text-gray-500">
-              ({assessments.length} assessments)
-            </span>
+      <main className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold mb-4 text-purple-300">
+            Course Context
           </h2>
+          <div className="space-y-2">
+            <pre>{JSON.stringify(user, null, 2)}</pre>
+            <p>
+              <span className="text-gray-400">Course:</span>{" "}
+              {user?.context?.context?.title || "Unknown Course"}
+            </p>
+            <p>
+              <span className="text-gray-400">ID:</span> {user?.context?.id}
+            </p>
+          </div>
         </div>
 
-        <AssessmentsTable
-          assessments={assessments}
-          ltik={ltik}
-          onAssignClick={(assessment) => {
-            setSelectedAssessment(assessment);
-            setSelectedStudents([]);
-            setIsAssignModalOpen(true);
-          }}
-          onViewAssigned={async (assessment) => {
-            setSelectedAssessment(assessment);
-            setIsViewAssignedModalOpen(true);
-            setAssignedStudents([]);
-            setLoadingAssigned(true);
-
-            try {
-              const assessmentId = getAssessmentId(assessment);
-              if (assessmentId && ltik) {
-                const headers = {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${ltik}`,
-                };
-                const students = await fetchAssignedStudents(
-                  assessmentId,
-                  headers,
-                );
-                setAssignedStudents(students);
-              }
-            } catch (err) {
-              console.error("Failed to fetch assigned students:", err);
-            } finally {
-              setLoadingAssigned(false);
-            }
-          }}
-        />
+        <div className="p-6">
+          <h2 className="text-xl font-semibold mb-4 text-blue-300">
+            Tool Status
+          </h2>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-green-500"></div>
+            <span>LTI 1.3 Active</span>
+          </div>
+          <p className="mt-4 text-sm text-gray-400">
+            Session valid. Tokens exchanged successfully.
+          </p>
+        </div>
       </main>
-
-      <AssignModal
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        assessment={selectedAssessment}
-        members={members}
-        selectedStudents={selectedStudents}
-        onStudentToggle={(userId) => {
-          setSelectedStudents((prev) =>
-            prev.includes(userId)
-              ? prev.filter((id) => id !== userId)
-              : [...prev, userId],
-          );
-        }}
-        onSelectAll={() => {
-          setSelectedStudents(
-            selectedStudents.length === members.length
-              ? []
-              : members.map((m) => m.user_id),
-          );
-        }}
-        onSubmit={() => {
-          setIsAssignModalOpen(false);
-          setSelectedStudents([]);
-          setSelectedAssessment(null);
-        }}
-        ltik={ltik}
-      />
-
-      <ViewAssignedModal
-        isOpen={isViewAssignedModalOpen}
-        onClose={() => setIsViewAssignedModalOpen(false)}
-        assessment={selectedAssessment}
-        students={assignedStudents}
-        loading={loadingAssigned}
-      />
     </div>
   );
 }
