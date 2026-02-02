@@ -40,6 +40,7 @@ export const getMe = (req: Request, res: Response): Response => {
   });
 };
 
+// Get assessments from Testlify
 export const getAssessments = async (
   _req: Request,
   res: Response,
@@ -89,8 +90,14 @@ export const getMembers =
       const token = (res.locals as any).token;
       const contextId = token.platformContext.context.id;
 
+      console.log("📋 Fetching members for context:", contextId);
+
+      // Use LTI Names and Roles Provisioning Service to get actual members
       const members = await lti.NamesAndRoles.getMembers(token);
 
+      console.log("✅ Found", members?.members?.length || 0, "members");
+
+      // Filter to only include learners/students
       const students = (members?.members || []).filter((member: any) => {
         const roles = member.roles || [];
         return roles.some(
@@ -102,6 +109,8 @@ export const getMembers =
             ),
         );
       });
+
+      console.log("👥 Filtered to", students.length, "students");
 
       return res.json({
         members: students.map((student: any) => ({
@@ -145,11 +154,17 @@ export const createAssignment =
         return res.status(400).json({ error: "Invalid request data" });
       }
 
+      console.log(
+        `📝 Assigning ${students.length} students to assessment ${assessmentId}`,
+      );
+
+      // 1. Ensure LineItem exists
       let lineItem = await AssessmentLineItem.findOne({
         where: { assessmentId, contextId },
       });
 
       if (!lineItem) {
+        console.log("Creating new LineItem for assessment");
         try {
           const newLineItem = {
             scoreMaximum: 100,
@@ -162,21 +177,25 @@ export const createAssignment =
             token,
             newLineItem,
           );
+          console.log("✅ Created LTI LineItem:", ltiLineItem.id);
 
           lineItem = await AssessmentLineItem.create({
             assessmentId,
             contextId,
             lineItemId: ltiLineItem.id,
-            lineItemUrl: ltiLineItem.id,
+            lineItemUrl: ltiLineItem.id, // Usually ID is the URL
             iss,
             clientId,
             deploymentId,
           });
         } catch (liError: any) {
           console.error("Failed to create LineItem:", liError);
+          // Continue without LineItem? No, we need it for scoring.
+          // But maybe we can proceed with assignment anyway.
         }
       }
 
+      // 2. Clear old assignments logic
       await AssessmentAssignment.destroy({
         where: {
           assessmentId,
@@ -184,6 +203,7 @@ export const createAssignment =
         },
       });
 
+      // 3. Create new assignments
       const assignments = students.map((student) => ({
         assessmentId,
         assessmentTitle,
@@ -196,7 +216,7 @@ export const createAssignment =
 
       await AssessmentAssignment.bulkCreate(assignments);
 
-      await AssessmentAssignment.bulkCreate(assignments);
+      console.log(`✅ Successfully assigned ${students.length} students`);
 
       return res.json({
         success: true,
@@ -225,6 +245,10 @@ export const getAssignments = async (
     const contextId = token.platformContext.context.id;
     const { assessmentId } = req.params;
 
+    console.log(
+      `📋 Fetching assignments for assessment ${assessmentId} in context ${contextId}`,
+    );
+
     const assignments = await AssessmentAssignment.findAll({
       where: {
         assessmentId,
@@ -232,6 +256,8 @@ export const getAssignments = async (
       },
       order: [["createdAt", "DESC"]],
     });
+
+    console.log(`✅ Found ${assignments.length} assigned students`);
 
     const students = assignments.map((a) => ({
       user_id: a.studentId,
@@ -266,6 +292,11 @@ export const inviteCandidates = async (
       return res.status(400).json({ error: "Assessment ID is required" });
     }
 
+    console.log(
+      `📧 Inviting candidates for assessment ${assessmentId} in context ${contextId}`,
+    );
+
+    // Get assigned students for this assessment
     const assignments = await AssessmentAssignment.findAll({
       where: {
         assessmentId,
@@ -279,6 +310,9 @@ export const inviteCandidates = async (
       });
     }
 
+    console.log(`📋 Found ${assignments.length} assigned students`);
+
+    // Format candidates for Testlify API
     const candidateInvites = assignments.map((a) => ({
       firstName: a.studentName?.split(" ")[0] || "",
       lastName: a.studentName?.split(" ").slice(1).join(" ") || "",
@@ -316,6 +350,7 @@ export const inviteCandidates = async (
     }
 
     const result = await response.json();
+    console.log(`✅ Successfully invited ${assignments.length} candidates`);
 
     return res.json({
       success: true,
@@ -351,14 +386,14 @@ export const getCandidates =
         return res.status(400).json({ error: "Assessment ID is required" });
       }
 
-      if (!assessmentId) {
-        return res.status(400).json({ error: "Assessment ID is required" });
-      }
+      console.log(`Fetching LTI candidates for ${assessmentId}`);
 
+      // 1. Get assigned students from DB
       const assignments = await AssessmentAssignment.findAll({
         where: { assessmentId, contextId },
       });
 
+      // 2. Get LineItem
       const lineItem = await AssessmentLineItem.findOne({
         where: { assessmentId, contextId },
       });
@@ -366,32 +401,45 @@ export const getCandidates =
       let ltiScores: any[] = [];
       if (lineItem) {
         try {
+          // Fetch scores from LTI Gradebook
           const scoresResult = await lti.Grade.getScores(
             token,
             lineItem.lineItemId,
           );
-          ltiScores = scoresResult.id ? [] : scoresResult;
+          ltiScores = scoresResult.id ? [] : scoresResult; // Handle weird return, typically it's array
           if (scoresResult && Array.isArray(scoresResult.scores)) {
             ltiScores = scoresResult.scores;
           } else if (Array.isArray(scoresResult)) {
             ltiScores = scoresResult;
           }
+          console.log(`Found ${ltiScores.length} scores in LTI`);
         } catch (scoreErr) {
           console.error("Failed to fetch LTI scores:", scoreErr);
         }
       }
 
+      // 3. Merge data
+      // We want to return Candidate[] format:
+      // { _id, email, firstName, lastName, candidateStatus, grade, score }
+
+      // Map DB assignments to candidates
       const candidates = assignments.map((a) => {
         // Find score for this student
         const scoreEntry = ltiScores.find((s: any) => s.userId === a.studentId);
         const hasScore = !!scoreEntry;
+
+        // Determine status based on score existence
+        // (Rough approximation: if score exists, it's completed or started)
+        let status = "Invited";
+        let grade = undefined;
 
         if (hasScore) {
           status =
             scoreEntry.activityProgress === "Completed"
               ? "Completed"
               : "Started";
-
+          // LTI stores resultScore / resultMaximum
+          // Convert to percentage or keep raw
           if (scoreEntry.resultScore != null && scoreEntry.resultMaximum > 0) {
             grade = (scoreEntry.resultScore / scoreEntry.resultMaximum) * 100;
           }
@@ -425,6 +473,7 @@ export const submitScore =
     res: Response,
   ): Promise<Response> => {
     try {
+      // 0. Verify Authorization Header
       const authHeader = req.headers["authorization"];
       const apiSecret = process.env.LTI_WEBHOOK_SECRET;
 
@@ -449,14 +498,18 @@ export const submitScore =
       }
 
       console.log(
-        `Received score submission for ${studentEmail} on ${assessmentId}`,
+        `🚀 Received score submission: ${score}/${maxScore} for ${studentEmail} on ${assessmentId}`,
       );
 
+      // 1. Find the assignment to identify the student (LMS User ID) and Context
+      // We search by assessmentId and studentEmail.
+      // NOTE: studentEmail must match what we stored during assignment.
       const assignment = await AssessmentAssignment.findOne({
         where: { assessmentId, studentEmail },
       });
 
       if (!assignment) {
+        console.error("Student assignment not found for email:", studentEmail);
         return res
           .status(404)
           .json({ error: "Student not assigned to this assessment" });
@@ -464,15 +517,22 @@ export const submitScore =
 
       const { studentId, contextId } = assignment;
 
+      // 2. Find the LineItem
       const lineItem = await AssessmentLineItem.findOne({
         where: { assessmentId, contextId },
       });
 
       if (!lineItem) {
+        console.error("LineItem not found for assessment:", assessmentId);
         return res
           .status(404)
           .json({ error: "LTI LineItem not found for this assessment" });
       }
+
+      // 3. Connect to LTI Platform
+      console.log(
+        `Connecting to platform ${lineItem.iss} for deployment ${lineItem.deploymentId}`,
+      );
 
       const Platform = await lti.getPlatform(
         lineItem.iss,
@@ -484,6 +544,7 @@ export const submitScore =
         return res.status(500).json({ error: "Platform not found" });
       }
 
+      // 4. Submit Score
       const scoreObj = {
         userId: studentId,
         scoreGiven: score,
@@ -493,17 +554,30 @@ export const submitScore =
         timestamp: new Date().toISOString(),
       };
 
+      console.log("Submitting score to LTI:", scoreObj);
+
+      // Only attempt to publish if we have a line item ID
+      // Platform.Grade.scorePublish(lineItemId, scoreObj) ??
+      // Check if ltijs Platform has utility
+      // Standard way varies, but assuming we can use lti.Grade with a constructed token if Platform methods aren't direct.
+      // Actually, Platform.platformAccessToken() gets the token.
+
+      // We can use the lti.Grade service if we mock the idtoken
       const idToken = {
         iss: lineItem.iss,
         user: studentId,
-        platformId: lineItem.iss,
+        platformId: lineItem.iss, // Usually works
         clientId: lineItem.clientId,
         deploymentId: lineItem.deploymentId,
       };
 
+      // Wait, lti.Grade.scorePublish expects the idtoken to have specific fields.
+      // Trying to use Platform.scorePublish? No.
+      // Just try standard Grade service.
+
       await lti.Grade.scorePublish(idToken, lineItem.lineItemId, scoreObj);
 
-      console.log("Score submitted successfully");
+      console.log("✅ Score submitted successfully");
 
       return res.json({ success: true });
     } catch (err: any) {

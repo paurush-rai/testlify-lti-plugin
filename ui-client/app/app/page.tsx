@@ -39,6 +39,7 @@ export default function LtiApp() {
 
   useEffect(() => {
     if (!ltik) {
+      console.log("No LTIK found in URL");
       setLoading(false);
       return;
     }
