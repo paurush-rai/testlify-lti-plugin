@@ -9,7 +9,6 @@ import setupRoutes from "./routes/api";
 
 // Import models to ensure they're registered
 import "./models/AssessmentAssignment";
-import "./models/AssessmentLineItem";
 
 const lti = Provider;
 
