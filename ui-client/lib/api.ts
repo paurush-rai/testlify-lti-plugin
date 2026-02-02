@@ -99,7 +99,6 @@ export async function fetchCandidates(
   }
 
   const data = await response.json();
-  // The API returns data in a 'data' array
   return Array.isArray(data.data) ? data.data : [];
 }
 

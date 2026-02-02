@@ -31,14 +31,6 @@ lti.app.use(express.json());
 const setup = async (): Promise<void> => {
   // LTI Launch Callback
   lti.onConnect(async (token: any, _req: Request, res: Response) => {
-    console.log("----------------------------------------");
-    console.log("✅ LTI Launch successful!");
-    console.log("User:", token.user);
-    console.log("Context:", token.context);
-    console.log("Redirecting to /app...");
-    console.log("----------------------------------------");
-
-    // Redirect to the Next.js UI
     const uiUrl = process.env.UI_URL || "";
     return res.redirect(`${uiUrl}/app?ltik=${(res.locals as any).ltik}`);
   });

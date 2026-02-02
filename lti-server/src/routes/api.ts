@@ -11,7 +11,6 @@ import {
 } from "../controllers/apiController";
 
 const setupRoutes = (lti: any): void => {
-  // API Endpoints for UI
   lti.app.get("/api/me", getMe);
   lti.app.get("/api/assessments", getAssessments);
   lti.app.get("/api/members", getMembers(lti));
@@ -20,10 +19,8 @@ const setupRoutes = (lti: any): void => {
   lti.app.post("/api/invite-candidates", inviteCandidates);
   lti.app.get("/api/assessments/:assessmentId/candidates", getCandidates(lti));
 
-  // External Webhook for Score Submission
   lti.app.post("/api/score", submitScore(lti));
 
-  // Deep Linking Route
   lti.app.post("/lti/deeplink", async (_req: Request, res: Response) => {
     return res.sendStatus(200);
   });
