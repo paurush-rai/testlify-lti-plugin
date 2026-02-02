@@ -34,6 +34,7 @@ const setup = async (): Promise<void> => {
     console.log("✅ LTI Launch successful!");
     console.log("User:", token.user);
     console.log("Context:", token.context);
+    console.log("PlatformId:", token.platformId);
     console.log("Redirecting to /app...");
     console.log("----------------------------------------");
 
@@ -81,29 +82,6 @@ const setup = async (): Promise<void> => {
   }
 
   await lti.deploy({ port, serverless: false });
-
-  // Register Platforms (Manual Config)
-  const issuerUrl = process.env.LMS_ISSUER_URL;
-  const clientId = process.env.LMS_CLIENT_ID;
-  const authUrl = process.env.LMS_AUTH_URL;
-  const tokenUrl = process.env.LMS_TOKEN_URL;
-  const keysetUrl = process.env.LMS_KEYSET_URL;
-
-  if (issuerUrl && clientId) {
-    try {
-      await lti.registerPlatform({
-        url: issuerUrl,
-        name: "LMS Platform",
-        clientId: clientId,
-        authenticationEndpoint: authUrl,
-        accesstokenEndpoint: tokenUrl,
-        authConfig: { method: "JWK_SET", key: keysetUrl },
-      });
-      console.log(`Registered platform: ${issuerUrl}`);
-    } catch (err: any) {
-      console.log("Platform already registered or error:", err.message);
-    }
-  }
 
   console.log(`LTI Provider listening on port ${port}`);
 };
