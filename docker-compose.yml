@@ -11,12 +11,22 @@ services:
       - "5435:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ltiuser -d ltidb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   lti-server:
-    build: ./lti-server
+    build:
+      context: ./lti-server
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "4000:4000"
+    volumes:
+      - ./lti-server:/app
+      - /app/node_modules
     environment:
       - DB_HOST=postgres
       - DB_USER=ltiuser
@@ -31,29 +41,46 @@ services:
       - LMS_AUTH_URL=${LMS_AUTH_URL}
       - LMS_TOKEN_URL=${LMS_TOKEN_URL}
       - LMS_KEYSET_URL=${LMS_KEYSET_URL}
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    networks:
+      - default
+      - moodle-net
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   ui-client:
-    build: ./ui-client
+    build:
+      context: ./ui-client
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - ./ui-client:/app
+      - /app/node_modules
+      - /app/.next
     environment:
-      - API_URL=${API_URL:-http://lti-server:4000}
+      - API_URL=${API_URL:-http://localhost:4000}
     depends_on:
       - lti-server
 
-  # ngrok:
-  #   image: ngrok/ngrok:latest
-  #   restart: unless-stopped
-  #   command: "http lti-server:4000"
-  #   environment:
-  #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - lti-server
+    # ngrok:
+    #   image: ngrok/ngrok:latest
+    #   restart: unless-stopped
+    #   command: "http 3000"
+    #   environment:
+    #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    #   ports:
+    #     - "3000:3000"
+    #   depends_on:
+    #     - lti-server
+
+networks:
+  default:
+  moodle-net:
+    name: moodle-docker_default
+    external: true
 
 volumes:
   pgdata:

@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies required for Next.js SWC on Alpine
+RUN apk add --no-cache libc6-compat
+
+COPY package*.json ./
+# Force clean install to avoid version mismatches and ensure correct Next.js version
+RUN rm -f package-lock.json && \
+    npm install && \
+    npm install next@14.0.4
+
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

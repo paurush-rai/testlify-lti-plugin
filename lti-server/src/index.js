@@ -32,9 +32,9 @@ lti.setup(
     dynRegRoute: "/lti/register", // Enable Dynamic Registration Endpoint
     dynReg: {
       url: process.env.SERVER_URL || "http://localhost:4000",
-      name: "First LTI Plugin",
-      description: "A demo LTI 1.3 tool",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Node.js_logo_2015.svg/2560px-Node.js_logo_2015.svg.png",
+      name: "Testlify",
+      description: "Testlify LTI 1.3 Tool",
+      logo: "https://testlify.com/wp-content/uploads/2022/11/Testlify-Logo-Main_1-1-1-1.svg",
       redirectUris: [], // Optional: add extra redirect URIs if needed
       customParameters: {}, // Optional
       autoActivate: true, // Automatically activate the platform
@@ -76,13 +76,14 @@ const setup = async () => {
     return res.redirect(`${uiUrl}/app?ltik=${res.locals.ltik}`);
   });
 
-  // Handle Dynamic Registration (Optional: just logging)
+  // Handle Dynamic Registration
   lti.onDynamicRegistration(async (req, res, next) => {
     try {
       if (!req.query.openid_configuration) {
         return res.status(400).send({ error: "Missing openid_configuration" });
       }
       console.log("Registering Platform:", req.query.openid_configuration);
+
       const message = await lti.DynamicRegistration.register(
         req.query.openid_configuration,
         req.query.registration_token,
