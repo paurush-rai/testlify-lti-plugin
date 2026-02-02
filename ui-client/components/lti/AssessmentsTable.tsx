@@ -32,6 +32,7 @@ interface AssessmentsTableProps {
   readonly ltik: string | null;
   readonly onAssignClick: (assessment: Assessment) => void;
   readonly onViewAssigned: (assessment: Assessment) => void;
+  readonly onViewScores: (assessment: Assessment) => void;
 }
 
 export default function AssessmentsTable({
@@ -39,6 +40,7 @@ export default function AssessmentsTable({
   ltik,
   onAssignClick,
   onViewAssigned,
+  onViewScores,
 }: AssessmentsTableProps) {
   const { toast } = useToast();
   const [assessmentToInvite, setAssessmentToInvite] =
@@ -193,6 +195,11 @@ export default function AssessmentsTable({
                             onClick={() => onViewAssigned(assessment)}
                           >
                             View assigned students
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onViewScores(assessment)}
+                          >
+                            View student scores
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

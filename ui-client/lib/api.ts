@@ -1,4 +1,4 @@
-import type { User, Assessment, Student } from "@/types/lti";
+import type { User, Assessment, Student, Candidate } from "@/types/lti";
 
 export async function fetchUserData(headers: HeadersInit): Promise<User> {
   const response = await fetch("/api/me", { headers });
@@ -84,6 +84,23 @@ export async function inviteCandidates(
   }
 
   return response.json();
+}
+
+export async function fetchCandidates(
+  assessmentId: string,
+  headers: HeadersInit,
+): Promise<Candidate[]> {
+  const response = await fetch(`/api/assessments/${assessmentId}/candidates`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch candidates");
+  }
+
+  const data = await response.json();
+  // The API returns data in a 'data' array
+  return Array.isArray(data.data) ? data.data : [];
 }
 
 export function getAssessmentId(assessment: Assessment): string | null {

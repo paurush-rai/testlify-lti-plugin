@@ -6,14 +6,16 @@ import Header from "@/components/lti/Header";
 import AssessmentsTable from "@/components/lti/AssessmentsTable";
 import AssignModal from "@/components/lti/AssignModal";
 import ViewAssignedModal from "@/components/lti/ViewAssignedModal";
+import ViewScoresModal from "@/components/lti/ViewScoresModal";
 import {
   fetchUserData,
   fetchAssessments,
   fetchMembers,
   fetchAssignedStudents,
+  fetchCandidates,
   getAssessmentId,
 } from "@/lib/api";
-import type { User, Assessment, Student } from "@/types/lti";
+import type { User, Assessment, Student, Candidate } from "@/types/lti";
 
 export default function LtiApp() {
   const [user, setUser] = useState<User | null>(null);
@@ -28,6 +30,9 @@ export default function LtiApp() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [assignedStudents, setAssignedStudents] = useState<Student[]>([]);
   const [loadingAssigned, setLoadingAssigned] = useState(false);
+  const [isViewScoresModalOpen, setIsViewScoresModalOpen] = useState(false);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
 
   const searchParams = useSearchParams();
   const ltik = searchParams.get("ltik");
@@ -149,6 +154,31 @@ export default function LtiApp() {
               setLoadingAssigned(false);
             }
           }}
+          onViewScores={async (assessment) => {
+            setSelectedAssessment(assessment);
+            setIsViewScoresModalOpen(true);
+            setCandidates([]);
+            setLoadingCandidates(true);
+
+            try {
+              const assessmentId = getAssessmentId(assessment);
+              if (assessmentId && ltik) {
+                const headers = {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${ltik}`,
+                };
+                const candidatesData = await fetchCandidates(
+                  assessmentId,
+                  headers,
+                );
+                setCandidates(candidatesData);
+              }
+            } catch (err) {
+              console.error("Failed to fetch candidates:", err);
+            } finally {
+              setLoadingCandidates(false);
+            }
+          }}
         />
       </main>
 
@@ -186,6 +216,14 @@ export default function LtiApp() {
         assessment={selectedAssessment}
         students={assignedStudents}
         loading={loadingAssigned}
+      />
+
+      <ViewScoresModal
+        isOpen={isViewScoresModalOpen}
+        onClose={() => setIsViewScoresModalOpen(false)}
+        assessment={selectedAssessment}
+        candidates={candidates}
+        loading={loadingCandidates}
       />
     </div>
   );

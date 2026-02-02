@@ -27,3 +27,13 @@ export interface Student {
   email: string;
   roles?: string[];
 }
+
+export interface Candidate {
+  _id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  candidateStatus: string;
+  grade?: number;
+  score?: number;
+}
