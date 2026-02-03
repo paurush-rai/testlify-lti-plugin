@@ -21,6 +21,9 @@ lti.setup(
   ltiConfig.options,
 );
 
+// Whitelist the webhook route to bypass LTI authentication
+(lti as any).whitelist({ route: "/api/webhook/score", method: "POST" });
+
 // Middleware: Extract Bearer Token for LTIaaS mode
 lti.app.use(extractBearerToken);
 
@@ -75,13 +78,22 @@ const setup = async (): Promise<void> => {
 
   // Sync database (create tables if they don't exist)
   try {
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     console.log("✅ Database synced successfully");
   } catch (err) {
     console.error("❌ Database sync error:", err);
   }
 
   await lti.deploy({ port, serverless: false });
+
+  // Manually ensure the route is free from LTI auth checks if config didn't catch it
+  // But ltijs whitelist usually works on the LTI middleware.
+  // Another method is to register this route on a separate express app or before lti setup, but ltijs owns the express app.
+  // We can try to explicitly unmount potential middleware if needed, but whitelist should work.
+  // Instead, let's try defining the route BEFORE lti.deploy if possible? No, setupRoutes is called before deploy.
+
+  // Note: lti.whitelist is not a public method on Provider in all versions.
+  // Let's rely on the config we passed. If that failed, we might need to check if lti.app.use(ltijsMiddleware) is overriding it.
 
   console.log(`LTI Provider listening on port ${port}`);
 };

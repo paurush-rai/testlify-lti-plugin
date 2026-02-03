@@ -11,6 +11,7 @@ interface AssessmentAssignmentAttributes {
   studentEmail: string | null;
   contextId: string;
   platformId: string | null;
+  lineItemUrl: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -37,6 +38,7 @@ class AssessmentAssignment
   public studentEmail!: string | null;
   public contextId!: string;
   public platformId!: string | null;
+  public lineItemUrl!: string | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -75,6 +77,10 @@ AssessmentAssignment.init(
       allowNull: false,
     },
     platformId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lineItemUrl: {
       type: DataTypes.STRING,
       allowNull: true,
     },

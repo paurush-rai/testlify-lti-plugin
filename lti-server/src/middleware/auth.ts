@@ -6,6 +6,10 @@ export const extractBearerToken = (
   _res: Response,
   next: NextFunction,
 ): void => {
+  if (req.path.startsWith("/api/webhook")) {
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.split(" ")[1];

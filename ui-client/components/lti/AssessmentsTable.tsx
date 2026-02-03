@@ -26,6 +26,7 @@ import {
 import type { Assessment } from "@/types/lti";
 import { inviteCandidates, getAssessmentId } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import ViewScoresModal from "./ViewScoresModal";
 
 interface AssessmentsTableProps {
   readonly assessments: Assessment[];
@@ -43,6 +44,8 @@ export default function AssessmentsTable({
   const { toast } = useToast();
   const [assessmentToInvite, setAssessmentToInvite] =
     useState<Assessment | null>(null);
+  const [assessmentToViewScores, setAssessmentToViewScores] =
+    useState<Assessment | null>(null);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -57,6 +60,10 @@ export default function AssessmentsTable({
 
   const handleInviteClick = (assessment: Assessment) => {
     setAssessmentToInvite(assessment);
+  };
+
+  const handleViewScoresClick = (assessment: Assessment) => {
+    setAssessmentToViewScores(assessment);
   };
 
   const confirmInvite = async () => {
@@ -194,6 +201,11 @@ export default function AssessmentsTable({
                           >
                             View assigned students
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleViewScoresClick(assessment)}
+                          >
+                            View Scores
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -225,6 +237,13 @@ export default function AssessmentsTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ViewScoresModal
+        isOpen={!!assessmentToViewScores}
+        onClose={() => setAssessmentToViewScores(null)}
+        assessment={assessmentToViewScores}
+        ltik={ltik}
+      />
     </>
   );
 }

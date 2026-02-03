@@ -133,7 +133,19 @@ export const createAssignment = async (
   try {
     const token = (res.locals as any).token;
     const contextId = token.platformContext.context.id;
-    const platformId = token.platformContext.guid;
+    const platformId = token.platformId;
+
+    // Debug: Inspect incoming endpoints
+    console.log(
+      "🔍 Inspecting LTI Endpoints:",
+      JSON.stringify(token.platformContext.endpoint, null, 2),
+    );
+
+    // Extract line items endpoint from the token claims
+    const lineItemUrl =
+      token.platformContext.endpoint?.lineitem ||
+      token.platformContext.endpoint?.lineitems ||
+      null;
 
     const { assessmentId, assessmentTitle, students } = req.body;
 
@@ -162,6 +174,7 @@ export const createAssignment = async (
       studentEmail: student.email,
       contextId,
       platformId,
+      lineItemUrl,
     }));
 
     await AssessmentAssignment.bulkCreate(assignments);
@@ -314,3 +327,46 @@ export const inviteCandidates = async (
     });
   }
 };
+
+// Get scores from LMS Gradebook
+export const getScores =
+  (lti: any) =>
+  async (
+    req: Request<{ assessmentId: string }>,
+    res: Response,
+  ): Promise<Response> => {
+    if (!(res.locals as any).token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      const token = (res.locals as any).token;
+      const { assessmentId } = req.params;
+
+      console.log(`📊 Fetching scores for assessment ${assessmentId}`);
+
+      // Attempt to find line item by tag (assuming tag == assessmentId)
+      const lineItemsResponse = await lti.Grade.getLineItems(token, {
+        tag: assessmentId,
+      });
+
+      const lineItems = lineItemsResponse.lineItems || [];
+
+      if (lineItems.length === 0) {
+        console.log("⚠️ No line item found for this assessment.");
+        return res.json({ scores: [] });
+      }
+
+      // Use the first matching line item
+      const lineItemId = lineItems[0].id;
+      console.log(`Found LineItem: ${lineItemId}`);
+
+      const scoresResponse = await lti.Grade.getScores(token, lineItemId);
+
+      return res.json({ scores: scoresResponse.scores || [] });
+    } catch (err: any) {
+      console.error("❌ Get Scores Error:", err);
+      // Return empty scores instead of 500 to avoid breaking UI if feature not supported
+      return res.json({ scores: [], error: err.message });
+    }
+  };
