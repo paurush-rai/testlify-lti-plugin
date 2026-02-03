@@ -18,10 +18,8 @@ interface InviteRequest {
   assessmentId: string;
 }
 
-// Get user info
-export const getMe = (req: Request, res: Response): Response => {
+export const getMe = (_req: Request, res: Response): Response => {
   if (!(res.locals as any).token) {
-    console.log("❌ /api/me Unauthorized. Cookies:", req.headers.cookie);
     return res.status(401).json({ error: "Unauthorized" });
   }
   return res.json({
@@ -32,7 +30,6 @@ export const getMe = (req: Request, res: Response): Response => {
   });
 };
 
-// Get assessments from Testlify
 export const getAssessments = async (
   _req: Request,
   res: Response,
@@ -63,14 +60,12 @@ export const getAssessments = async (
     const data = await response.json();
     return res.json(data);
   } catch (err: any) {
-    console.error("Testlify API Error:", err);
     return res
       .status(500)
       .json({ error: "Failed to fetch assessments", details: err.message });
   }
 };
 
-// Get course members (students)
 export const getMembers =
   (lti: any) =>
   async (_req: Request, res: Response): Promise<Response> => {
@@ -82,14 +77,8 @@ export const getMembers =
       const token = (res.locals as any).token;
       const contextId = token.platformContext.context.id;
 
-      console.log("📋 Fetching members for context:", contextId);
-
-      // Use LTI Names and Roles Provisioning Service to get actual members
       const members = await lti.NamesAndRoles.getMembers(token);
 
-      console.log("✅ Found", members?.members?.length || 0, "members");
-
-      // Filter to only include learners/students
       const students = (members?.members || []).filter((member: any) => {
         const roles = member.roles || [];
         return roles.some(
@@ -102,8 +91,6 @@ export const getMembers =
         );
       });
 
-      console.log("👥 Filtered to", students.length, "students");
-
       return res.json({
         members: students.map((student: any) => ({
           user_id: student.user_id,
@@ -114,14 +101,12 @@ export const getMembers =
         contextId,
       });
     } catch (err: any) {
-      console.error("Members API Error:", err);
       return res
         .status(500)
         .json({ error: "Failed to fetch members", details: err.message });
     }
   };
 
-// Create assignment (assign students to assessment)
 export const createAssignment = async (
   req: Request<{}, {}, AssignmentRequest>,
   res: Response,
@@ -135,13 +120,6 @@ export const createAssignment = async (
     const contextId = token.platformContext.context.id;
     const platformId = token.platformId;
 
-    // Debug: Inspect incoming endpoints
-    console.log(
-      "🔍 Inspecting LTI Endpoints:",
-      JSON.stringify(token.platformContext.endpoint, null, 2),
-    );
-
-    // Extract line items endpoint from the token claims
     const lineItemUrl =
       token.platformContext.endpoint?.lineitem ||
       token.platformContext.endpoint?.lineitems ||
@@ -153,11 +131,6 @@ export const createAssignment = async (
       return res.status(400).json({ error: "Invalid request data" });
     }
 
-    console.log(
-      `📝 Assigning ${students.length} students to assessment ${assessmentId}`,
-    );
-
-    // Delete existing assignments for this assessment in this context
     await AssessmentAssignment.destroy({
       where: {
         assessmentId,
@@ -165,7 +138,6 @@ export const createAssignment = async (
       },
     });
 
-    // Create new assignments
     const assignments = students.map((student) => ({
       assessmentId,
       assessmentTitle,
@@ -179,21 +151,17 @@ export const createAssignment = async (
 
     await AssessmentAssignment.bulkCreate(assignments);
 
-    console.log(`✅ Successfully assigned ${students.length} students`);
-
     return res.json({
       success: true,
       count: students.length,
     });
   } catch (err: any) {
-    console.error("❌ Assignment Error:", err);
     return res
       .status(500)
       .json({ error: "Failed to create assignments", details: err.message });
   }
 };
 
-// Get assigned students for an assessment
 export const getAssignments = async (
   req: Request<{ assessmentId: string }>,
   res: Response,
@@ -207,10 +175,6 @@ export const getAssignments = async (
     const contextId = token.platformContext.context.id;
     const { assessmentId } = req.params;
 
-    console.log(
-      `📋 Fetching assignments for assessment ${assessmentId} in context ${contextId}`,
-    );
-
     const assignments = await AssessmentAssignment.findAll({
       where: {
         assessmentId,
@@ -218,8 +182,6 @@ export const getAssignments = async (
       },
       order: [["createdAt", "DESC"]],
     });
-
-    console.log(`✅ Found ${assignments.length} assigned students`);
 
     const students = assignments.map((a) => ({
       user_id: a.studentId,
@@ -229,14 +191,12 @@ export const getAssignments = async (
 
     return res.json({ students });
   } catch (err: any) {
-    console.error("❌ Get Assignments Error:", err);
     return res
       .status(500)
       .json({ error: "Failed to fetch assignments", details: err.message });
   }
 };
 
-// Invite candidates to assessment
 export const inviteCandidates = async (
   req: Request<{}, {}, InviteRequest>,
   res: Response,
@@ -254,11 +214,6 @@ export const inviteCandidates = async (
       return res.status(400).json({ error: "Assessment ID is required" });
     }
 
-    console.log(
-      `📧 Inviting candidates for assessment ${assessmentId} in context ${contextId}`,
-    );
-
-    // Get assigned students for this assessment
     const assignments = await AssessmentAssignment.findAll({
       where: {
         assessmentId,
@@ -272,9 +227,6 @@ export const inviteCandidates = async (
       });
     }
 
-    console.log(`📋 Found ${assignments.length} assigned students`);
-
-    // Format candidates for Testlify API
     const candidateInvites = assignments.map((a) => ({
       firstName: a.studentName?.split(" ")[0] || "",
       lastName: a.studentName?.split(" ").slice(1).join(" ") || "",
@@ -284,7 +236,6 @@ export const inviteCandidates = async (
       candidateGroupId: null,
     }));
 
-    // Call Testlify API
     const testlifyToken = process.env.TESTLIFY_TOKEN;
     const inviteUrl =
       "https://api.testlify.com/v1/assessment/candidate/invites";
@@ -305,14 +256,12 @@ export const inviteCandidates = async (
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Testlify invite API error:", errorText);
       throw new Error(
         `Testlify API responded with ${response.status}: ${errorText}`,
       );
     }
 
     const result = await response.json();
-    console.log(`✅ Successfully invited ${assignments.length} candidates`);
 
     return res.json({
       success: true,
@@ -320,7 +269,6 @@ export const inviteCandidates = async (
       result,
     });
   } catch (err: any) {
-    console.error("❌ Invite Candidates Error:", err);
     return res.status(500).json({
       error: "Failed to invite candidates",
       details: err.message,
@@ -328,7 +276,6 @@ export const inviteCandidates = async (
   }
 };
 
-// Get scores from LMS Gradebook
 export const getScores =
   (lti: any) =>
   async (
@@ -343,9 +290,6 @@ export const getScores =
       const token = (res.locals as any).token;
       const { assessmentId } = req.params;
 
-      console.log(`📊 Fetching scores for assessment ${assessmentId}`);
-
-      // Attempt to find line item by tag (assuming tag == assessmentId)
       const lineItemsResponse = await lti.Grade.getLineItems(token, {
         tag: assessmentId,
       });
@@ -353,20 +297,15 @@ export const getScores =
       const lineItems = lineItemsResponse.lineItems || [];
 
       if (lineItems.length === 0) {
-        console.log("⚠️ No line item found for this assessment.");
         return res.json({ scores: [] });
       }
 
-      // Use the first matching line item
       const lineItemId = lineItems[0].id;
-      console.log(`Found LineItem: ${lineItemId}`);
 
       const scoresResponse = await lti.Grade.getScores(token, lineItemId);
 
       return res.json({ scores: scoresResponse.scores || [] });
     } catch (err: any) {
-      console.error("❌ Get Scores Error:", err);
-      // Return empty scores instead of 500 to avoid breaking UI if feature not supported
       return res.json({ scores: [], error: err.message });
     }
   };

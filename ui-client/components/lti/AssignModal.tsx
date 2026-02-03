@@ -72,7 +72,6 @@ export default function AssignModal({
       });
       onSubmit();
     } catch (err: any) {
-      console.error(err);
       toast({
         title: "Error",
         description: `Failed to assign students: ${err.message}`,

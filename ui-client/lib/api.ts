@@ -11,7 +11,6 @@ export async function fetchAssessments(
 ): Promise<Assessment[]> {
   const response = await fetch("/api/assessments", { headers });
   if (!response.ok) {
-    console.warn("Failed to fetch assessments");
     return [];
   }
 
@@ -22,7 +21,6 @@ export async function fetchAssessments(
 export async function fetchMembers(headers: HeadersInit): Promise<Student[]> {
   const response = await fetch("/api/members", { headers });
   if (!response.ok) {
-    console.warn("Failed to fetch members");
     return [];
   }
 

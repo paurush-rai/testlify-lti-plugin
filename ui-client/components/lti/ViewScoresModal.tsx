@@ -75,7 +75,6 @@ export default function ViewScoresModal({
       const data = await res.json();
       setScores(data.scores || []);
     } catch (err: any) {
-      console.error(err);
       setError(err.message || "Failed to load scores");
     } finally {
       setLoading(false);

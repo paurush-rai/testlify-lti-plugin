@@ -92,7 +92,6 @@ export default function AssessmentsTable({
         description: `Successfully sent invites to ${result.invitedCount} students!`,
       });
     } catch (err: any) {
-      console.error(err);
       toast({
         title: "Error",
         description: `Failed to send invites: ${err.message}`,

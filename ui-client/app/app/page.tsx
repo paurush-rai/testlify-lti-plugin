@@ -34,7 +34,6 @@ export default function LtiApp() {
 
   useEffect(() => {
     if (!ltik) {
-      console.log("No LTIK found in URL");
       setLoading(false);
       return;
     }
@@ -56,7 +55,6 @@ export default function LtiApp() {
         setAssessments(assessmentsData);
         setMembers(membersData);
       } catch (err: any) {
-        console.error(err);
         setError(err.message || "Failed to load LTI session.");
       } finally {
         setLoading(false);
@@ -144,7 +142,6 @@ export default function LtiApp() {
                 setAssignedStudents(students);
               }
             } catch (err) {
-              console.error("Failed to fetch assigned students:", err);
             } finally {
               setLoadingAssigned(false);
             }
