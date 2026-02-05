@@ -80,12 +80,19 @@ export const submitScore = async (
 
         try {
           accessToken = await platform.platformAccessToken(scopes.join(" "));
+          console.log("Access Token:", accessToken);
         } catch (tokenErr: any) {
+          console.warn(
+            "Initial LTI token request failed (likely missing scopes):",
+            tokenErr.message,
+          );
           try {
             const scoreScope =
               "https://purl.imsglobal.org/spec/lti-ags/scope/score";
             accessToken = await platform.platformAccessToken(scoreScope);
+            console.log("Access Token (Score Scope):", accessToken);
           } catch (retryErr: any) {
+            console.log("Access Token (Score Scope):", accessToken);
             results.push({
               id: assignment.id,
               status: "failed",
@@ -94,6 +101,15 @@ export const submitScore = async (
             });
             continue;
           }
+        }
+
+        // Extract token string if it's an object (ltijs v5+ often returns object)
+        if (
+          accessToken &&
+          typeof accessToken === "object" &&
+          (accessToken as any).access_token
+        ) {
+          accessToken = (accessToken as any).access_token;
         }
 
         if (!accessToken) {
@@ -108,15 +124,19 @@ export const submitScore = async (
         let lineItemId: string | null = null;
 
         const queryChar = assignment.lineItemUrl.includes("?") ? "&" : "?";
+        console.log("Line Item URL:", assignment.lineItemUrl);
+        console.log("Query Char:", queryChar);
         const getLineItemUrl = `${assignment.lineItemUrl}${queryChar}tag=${assessmentId}`;
+        console.log("Get Line Item URL:", getLineItemUrl);
 
         const getLiRes = await fetch(getLineItemUrl, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+            Accept: "application/vnd.ims.lis.v2.lineitemcontainer+json",
           },
         });
+        console.log("Get Line Item Response:", getLiRes);
 
         if (getLiRes.ok) {
           const liData = await getLiRes.json();
@@ -180,7 +200,13 @@ export const submitScore = async (
         }
 
         if (lineItemId) {
-          const scoreUrl = `${lineItemId}/scores`;
+          let scoreUrl = lineItemId;
+          if (lineItemId.includes("?")) {
+            const [urlPart, queryPart] = lineItemId.split("?");
+            scoreUrl = `${urlPart}/scores?${queryPart}`;
+          } else {
+            scoreUrl = `${lineItemId}/scores`;
+          }
           const scoreData = {
             userId: assignment.studentId,
             scoreGiven: score,
