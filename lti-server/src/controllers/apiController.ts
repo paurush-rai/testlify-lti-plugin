@@ -293,19 +293,35 @@ export const getScores =
       const lineItemsResponse = await lti.Grade.getLineItems(token, {
         tag: assessmentId,
       });
+      console.log("getScores: Found LineItems:", lineItemsResponse);
 
       const lineItems = lineItemsResponse.lineItems || [];
 
       if (lineItems.length === 0) {
+        console.log(
+          "getScores: No line items found for assessmentId:",
+          assessmentId,
+        );
         return res.json({ scores: [] });
       }
 
       const lineItemId = lineItems[0].id;
+      console.log("getScores: Using LineItemID:", lineItemId);
 
       const scoresResponse = await lti.Grade.getScores(token, lineItemId);
+      console.log("getScores: Scores Response:", scoresResponse);
 
-      return res.json({ scores: scoresResponse.scores || [] });
+      const mappedScores = (scoresResponse.scores || []).map((s: any) => ({
+        ...s,
+        scoreGiven: s.resultScore,
+        scoreMaximum: s.resultMaximum,
+        activityProgress: s.resultScore ? "Completed" : "Initialized", // approximation if missing
+        gradingProgress: s.gradingProgress || "FullyGraded",
+      }));
+
+      return res.json({ scores: mappedScores });
     } catch (err: any) {
+      console.error("getScores: Error fetching scores:", err);
       return res.json({ scores: [], error: err.message });
     }
   };
