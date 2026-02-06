@@ -31,5 +31,14 @@ export const sequelize = new Sequelize(
     dialect: dbOptions.dialect,
     logging: dbOptions.logging,
     port: dbOptions.port,
+    dialectOptions:
+      process.env.NODE_ENV === "production"
+        ? {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false,
+            },
+          }
+        : {},
   },
 );

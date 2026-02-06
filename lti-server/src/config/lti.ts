@@ -35,6 +35,15 @@ export const getLtiConfig = (): LtiConfig => {
       dialect: dbOptions.dialect,
       logging: dbOptions.logging,
       port: dbOptions.port,
+      dialectOptions:
+        process.env.NODE_ENV === "production"
+          ? {
+              ssl: {
+                require: true,
+                rejectUnauthorized: false,
+              },
+            }
+          : {},
     }),
     options: {
       appUrl: "/lti/launch", // Endpoint where LMS POSTs the launch data
@@ -44,7 +53,8 @@ export const getLtiConfig = (): LtiConfig => {
       dynReg: {
         url: process.env.SERVER_URL || "http://localhost:4000",
         name: "Testlify",
-        description: "Testlify LTI Plugin to manage assessments created on testlify platform",
+        description:
+          "Testlify LTI Plugin to manage assessments created on testlify platform",
         logo: "https://testlify.com/wp-content/uploads/2022/11/Testlify-Logo-Main_1-1-1-1.svg",
         redirectUris: [], // Optional: add extra redirect URIs if needed
         customParameters: {}, // Optional
