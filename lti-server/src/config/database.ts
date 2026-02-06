@@ -12,11 +12,11 @@ interface DbOptions {
 }
 
 export const dbOptions: DbOptions = {
-  host: process.env.DB_HOST || "localhost",
-  port: Number.parseInt(process.env.DB_PORT || "5432", 10),
-  database: process.env.DB_NAME || "ltidb",
-  user: process.env.DB_USER || "ltiuser",
-  pass: process.env.DB_PASS || "ltipassword",
+  host: process.env.DB_HOST || "",
+  port: Number.parseInt(process.env.DB_PORT || "", 10),
+  database: process.env.DB_NAME || "",
+  user: process.env.DB_USER || "",
+  pass: process.env.DB_PASS || "",
   dialect: "postgres",
   logging: false,
 };

@@ -2,17 +2,17 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:18
     environment:
-      POSTGRES_USER: ltiuser
-      POSTGRES_PASSWORD: ltipassword
-      POSTGRES_DB: ltidb
+      POSTGRES_USER: testlify_lti_db_user
+      POSTGRES_PASSWORD: zW7nbVHqZy1kT2adIYjMPNIAjHIfv1B9
+      POSTGRES_DB: ltitestlify_lti_db
     ports:
-      - "5435:5432"
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ltiuser -d ltidb"]
+      test: ["CMD-SHELL", "pg_isready -U testlify_lti_db_user -d ltitestlify_lti_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,12 +28,11 @@ services:
       - ./lti-server:/app
       - /app/node_modules
     environment:
-      - DB_HOST=postgres
-      - DB_USER=ltiuser
-      - DB_PASS=ltipassword
-      - DB_NAME=ltidb
+      - DB_HOST=dpg-d62k2g6r433s73cg2ptg-a
+      - DB_USER=testlify_lti_db_user
+      - DB_PASS=zW7nbVHqZy1kT2adIYjMPNIAjHIfv1B9
+      - DB_NAME=testlify_lti_db
       - DB_PORT=5432
-      - PORT=4000
       - LTI_KEY=${LTI_KEY:-DEV_KEY_CHANGE_ME}
       - UI_URL=${UI_URL:-http://localhost:3000}
       - LMS_ISSUER_URL=${LMS_ISSUER_URL}
