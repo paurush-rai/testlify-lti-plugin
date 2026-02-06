@@ -1,0 +1,87 @@
+Here is a robust Web Worker snippet to offload score submission to a background thread. This ensures the UI remains responsive even if the network request is slow.
+
+1. The Web Worker Code (scoreWorker.js)
+Save this code as a separate file, for example score-submission.worker.js.
+
+javascript
+/* score-submission.worker.js */
+self.onmessage = async (e) => {
+  const { 
+    webhookUrl, 
+    webhookSecret, 
+    studentEmail, 
+    assessmentId, 
+    score, 
+    maxScore 
+  } = e.data;
+  if (!webhookUrl || !webhookSecret) {
+    self.postMessage({ success: false, error: "Missing configuration" });
+    return;
+  }
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-webhook-secret": webhookSecret,
+      },
+      body: JSON.stringify({
+        studentEmail,
+        assessmentId,
+        score,
+        maxScore,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || `Server Error: ${response.status}`);
+    }
+    self.postMessage({ success: true, data: result });
+  } catch (error) {
+    self.postMessage({ success: false, error: error.message });
+  }
+};
+2. Implementation in Your App
+Here is how to use the worker in your main application logic (e.g., inside your React component or main script).
+
+javascript
+const submitScoreViaWorker = (scoreData) => {
+  // Initialize the worker
+  const worker = new Worker(new URL('./score-submission.worker.js', import.meta.url));
+  // Listen for the response from the worker
+  worker.onmessage = (event) => {
+    const { success, data, error } = event.data;
+    
+    if (success) {
+      console.log("✅ Score submitted successfully via Worker:", data);
+    } else {
+      console.error("❌ Worker failed to submit score:", error);
+    }
+    
+    // Terminate worker after the job is done to free memory
+    worker.terminate();
+  };
+  // Send data to the worker
+  worker.postMessage({
+    webhookUrl: "https://your-lti-plugin-url.com/api/webhook/score",
+    webhookSecret: "YOUR_WEBHOOK_SECRET", // Must match env variable LTI_WEBHOOK_SECRET
+    studentEmail: scoreData.email,
+    assessmentId: scoreData.assessmentId,
+    score: scoreData.score,        // e.g. 85
+    maxScore: scoreData.maxScore,  // e.g. 100
+  });
+};
+// Example Usage
+submitScoreViaWorker({
+  email: "student@university.edu",
+  assessmentId: "65a123bcde456",
+  score: 92,
+  maxScore: 100
+});
+Key Features:
+Non-Blocking: The network request happens off the main thread, preventing UI freezes.
+Safety: Includes a terminate() call to prevent memory leaks after the task completes.
+Error Handling: Properly captures and returns errors from the worker to the main thread.
+Matches API: Specifically designed to match your existing 
+webhookController.ts
+ payload and headers (x-webhook-secret).
