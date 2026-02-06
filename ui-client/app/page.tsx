@@ -9,11 +9,6 @@ export default function Home() {
           This is an LTI 1.3 Advantage Tool. Please launch this application from
           your Learning Management System (LMS).
         </p>
-        <div className="flex justify-center gap-4">
-          <a href="/app" className="btn bg-gray-700 hover:bg-gray-600">
-            Go to App (Test)
-          </a>
-        </div>
       </div>
     </main>
   );
