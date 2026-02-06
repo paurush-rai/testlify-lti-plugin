@@ -11,12 +11,21 @@ interface DbOptions {
   logging: boolean;
 }
 
+const getEnvVar = (key: string, defaultValue?: string): string => {
+  const value = process.env[key] || defaultValue;
+  if (value === undefined) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+};
+
 export const dbOptions: DbOptions = {
-  host: process.env.DB_HOST || "",
-  port: Number.parseInt(process.env.DB_PORT || "", 10),
-  database: process.env.DB_NAME || "",
-  user: process.env.DB_USER || "",
-  pass: process.env.DB_PASS || "",
+  host: getEnvVar("DB_HOST"),
+  // Parse port safely, default to 5432 if missing
+  port: Number.parseInt(process.env.DB_PORT || "5432", 10),
+  database: getEnvVar("DB_NAME"),
+  user: getEnvVar("DB_USER"),
+  pass: getEnvVar("DB_PASS"),
   dialect: "postgres",
   logging: false,
 };
