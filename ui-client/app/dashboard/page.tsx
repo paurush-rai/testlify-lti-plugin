@@ -142,6 +142,7 @@ export default function LtiApp() {
                 setAssignedStudents(students);
               }
             } catch (err) {
+              console.error("Failed to fetch assigned students:", err);
             } finally {
               setLoadingAssigned(false);
             }

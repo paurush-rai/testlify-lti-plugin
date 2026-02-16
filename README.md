@@ -1,19 +1,44 @@
-# LTI Tool — Express + Next.js
+# LTI Tool — Next.js (Consolidated)
 
-This project is a basic Learning Tools Interoperability (LTI) 1.3 tool designed to work with major LMS platforms including Canvas, Moodle, Blackboard, and D2L.
-
-The application consists of a backend service that handles LTI authentication and platform communication, and a web-based UI that runs inside the LMS iframe after a successful launch.
-
-This repository provides a starting point for building LTI-compliant educational tools with a modern web stack.
+This project is a Learning Tools Interoperability (LTI) 1.3 tool built as a single Next.js application. It integrates `ltijs` within the Next.js App Router to provide a seamless full-stack experience without a separate backend server.
 
 ## Features
 
-- LTI 1.3 + Advantage compatible
-- Works across major LMS platforms
-- Secure JWT-based launch flow
-- LMS-embedded web UI
-- Ready for extension with grading and roster services
+- **Standard Next.js App Router**: Backend logic resides in `app/api` routes.
+- **LTI 1.3 + Advantage**: Full support for LTI 1.3 launches, Names and Roles Provisioning, and Assignment and Grade Services.
+- **Integrated Database**: Uses `sequelize` with PostgreSQL.
+- **Serverless Ready**: Designed to deploy on Vercel or any Node.js environment.
 
-## Status
+## Getting Started
 
-This is an early-stage starter project intended for development and experimentation. Production hardening, monitoring, and scaling should be added before deployment to real institutions.
+The entire application is contained within the `ui-client` directory.
+
+1.  Navigate to the project directory:
+
+    ```bash
+    cd ui-client
+    ```
+
+2.  Install dependencies:
+
+    ```bash
+    npm install
+    ```
+
+3.  Configure Environment Variables (`.env`):
+    - `LTI_KEY`: Encryption key for `ltijs`.
+    - `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`: Database credentials.
+    - `TESTLIFY_API_KEY`: API key for external service integration.
+
+4.  Run Development Server:
+    ```bash
+    npm run dev
+    ```
+    The app will be available at `http://localhost:3000`.
+
+## API Routes
+
+- `/api/lti/*`: Handles all LTI protocol requests (Launch, Login, JWKS).
+- `/api/me`: Returns current user context.
+- `/api/assessments`: Fetches available assessments.
+- `/api/assignments`: Manages course assignments.
