@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx next build:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(node scripts/migrate.mjs:*)",
+      "Bash(PGPASSWORD=zW7nbVHqZy1kT2adIYjMPNIAjHIfv1B9 psql:*)",
+      "Bash(curl:*)",
+      "Bash(docker ps:*)"
+    ]
+  }
+}
