@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "migrate": "node scripts/migrate.mjs"
+    "lint": "next lint"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -22,7 +21,6 @@
     "lucide-react": "^0.563.0",
     "mongoose": "^9.2.1",
     "next": "14.0.4",
-    "pg": "^8.13.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^3.4.0",
@@ -30,7 +28,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.30",
-    "@types/pg": "^8.11.11",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.17",
     "autoprefixer": "^10.4.23",

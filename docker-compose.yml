@@ -1,79 +1,39 @@
-version: "3.8"
-
 services:
-  postgres:
-    image: postgres:18
-    environment:
-      POSTGRES_USER: testlify_lti_db_user
-      POSTGRES_PASSWORD: zW7nbVHqZy1kT2adIYjMPNIAjHIfv1B9
-      POSTGRES_DB: ltitestlify_lti_db
+  mongo:
+    image: mongo:latest
     ports:
-      - "5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U testlify_lti_db_user -d ltitestlify_lti_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  lti-server:
-    build:
-      context: ./lti-server
-      dockerfile: Dockerfile.dev
-    restart: always
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./lti-server:/app
-      - /app/node_modules
-    environment:
-      - DB_HOST=dpg-d62k2g6r433s73cg2ptg-a
-      - DB_USER=testlify_lti_db_user
-      - DB_PASS=zW7nbVHqZy1kT2adIYjMPNIAjHIfv1B9
-      - DB_NAME=testlify_lti_db
-      - DB_PORT=5432
-      - LTI_KEY=${LTI_KEY:-DEV_KEY_CHANGE_ME}
-      - UI_URL=${UI_URL:-http://localhost:3000}
-      - LMS_ISSUER_URL=${LMS_ISSUER_URL}
-      - LMS_CLIENT_ID=${LMS_CLIENT_ID}
-      - LMS_AUTH_URL=${LMS_AUTH_URL}
-      - LMS_TOKEN_URL=${LMS_TOKEN_URL}
-      - LMS_KEYSET_URL=${LMS_KEYSET_URL}
-      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+      - mongodata:/data/db
     networks:
       - default
       - moodle-net
-    depends_on:
-      postgres:
-        condition: service_healthy
 
-  ui-client:
+  app:
     build:
-      context: ./ui-client
+      context: .
       dockerfile: Dockerfile.dev
+    container_name: testlify-lti-app
     restart: always
     ports:
       - "3000:3000"
     volumes:
-      - ./ui-client:/app
+      - .:/app
       - /app/node_modules
       - /app/.next
     environment:
-      - API_URL=${API_URL:-http://localhost:4000}
+      - MONGODB_URI=mongodb://mongo:27017/lti-plugin
+      - LTI_KEY=${LTI_KEY}
+      - UI_URL=${UI_URL:-http://localhost:3000}
+      - TOOL_URL=${TOOL_URL:-http://host.docker.internal:3000}
+      - SERVER_URL=${SERVER_URL:-http://localhost:3000}
+      - TESTLIFY_TOKEN=${TESTLIFY_TOKEN}
+      - LTI_WEBHOOK_SECRET=${LTI_WEBHOOK_SECRET}
+    networks:
+      - default
+      - moodle-net
     depends_on:
-      - lti-server
-
-    # ngrok:
-    #   image: ngrok/ngrok:latest
-    #   restart: unless-stopped
-    #   command: "http 3000"
-    #   environment:
-    #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    #   ports:
-    #     - "3000:3000"
-    #   depends_on:
-    #     - lti-server
+      - mongo
 
 networks:
   default:
@@ -82,4 +42,4 @@ networks:
     external: true
 
 volumes:
-  pgdata:
+  mongodata:
