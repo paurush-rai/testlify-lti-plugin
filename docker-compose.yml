@@ -24,11 +24,27 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongo:27017/lti-plugin
       - LTI_KEY=${LTI_KEY}
-      - UI_URL=${UI_URL:-http://localhost:3000}
-      - TOOL_URL=${TOOL_URL:-http://host.docker.internal:3000}
-      - SERVER_URL=${SERVER_URL:-http://localhost:3000}
-      - TESTLIFY_TOKEN=${TESTLIFY_TOKEN}
       - LTI_WEBHOOK_SECRET=${LTI_WEBHOOK_SECRET}
+      - TESTLIFY_TOKEN=${TESTLIFY_TOKEN}
+
+      # ── Browser-facing URL (what users type in their browser) ──────────────
+      # Both the user's browser and Moodle's browser-side redirects use this.
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - UI_URL=${UI_URL:-http://localhost:3000}
+      - SERVER_URL=${SERVER_URL:-http://localhost:3000}
+
+      # ── LMS-server-reachable URL ───────────────────────────────────────────
+      # Moodle (inside Docker) fetches our JWKS endpoint at this URL to verify
+      # our OAuth JWT assertions.  Both containers are on moodle-net so we use
+      # the container name — no host.docker.internal needed (Linux-safe).
+      - TOOL_URL=http://testlify-lti-app:3000
+
+      # ── Docker dev URL rewrites ────────────────────────────────────────────
+      # Our Next.js server (also inside Docker) must reach Moodle server-side
+      # for NRPS, AGS, and OAuth token calls.  The LTI tokens carry Moodle's
+      # public URL (http://localhost:8000/…) which is unreachable from inside
+      # Docker.  This rule rewrites those URLs to the Moodle container name.
+      - DEV_LTI_REWRITES=http://localhost:8000,http://moodle-docker-webserver-1
     networks:
       - default
       - moodle-net

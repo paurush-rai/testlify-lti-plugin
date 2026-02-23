@@ -10,7 +10,9 @@
       "Bash(PGPASSWORD=zW7nbVHqZy1kT2adIYjMPNIAjHIfv1B9 psql:*)",
       "Bash(curl:*)",
       "Bash(docker ps:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(node -e:*)",
+      "Bash(docker network:*)"
     ]
   }
 }

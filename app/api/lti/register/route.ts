@@ -23,6 +23,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { upsertPlatform } from "@/lib/lti/platform-store";
+import { applyUrlRewrites, buildLmsFetchOptions } from "@/lib/lti/url-rewrite";
 import type {
   OpenIdConfig,
   ToolRegistration,
@@ -62,78 +63,6 @@ function getToolUrl(): string {
   );
 }
 
-// ─── URL rewriting (dev/Docker only) ─────────────────────────────────────────
-
-/**
- * Applies URL rewrites from DEV_LTI_REWRITES env var.
- * Format: "https://lms.example.com,http://moodle-internal;origin2,target2"
- *
- * Only active when DEV_LTI_REWRITES is set.  Used in Docker dev environments
- * where the LMS public hostname differs from its internal Docker hostname.
- *
- * Uses startsWith for precise origin-level matching (never rewrites paths/params).
- */
-function applyUrlRewrites(url: string): string {
-  const rewrites = process.env.DEV_LTI_REWRITES;
-  if (!rewrites || !url) return url;
-
-  for (const rule of rewrites.split(";")) {
-    const commaIdx = rule.indexOf(",");
-    if (commaIdx === -1) continue;
-    const source = rule.slice(0, commaIdx).trim();
-    const target = rule.slice(commaIdx + 1).trim();
-    if (source && target && url.startsWith(source)) {
-      return target + url.slice(source.length);
-    }
-  }
-  return url;
-}
-
-/**
- * Builds fetch options for server-to-server calls to the LMS.
- *
- * When a URL is rewritten (dev Docker), we spoof the Host header so the LMS
- * sees its own public hostname rather than the internal container hostname.
- * Without this, Apache/Nginx canonicalization redirects the request, which
- * strips the Authorization header and causes 401 errors.
- *
- * In production (no rewrites) the Host header is not set, leaving it to the
- * underlying HTTP client (correct behaviour).
- */
-function buildLmsFetchOptions(
-  originalUrl: string,
-  extra: RequestInit = {},
-): { fetchUrl: string; fetchInit: RequestInit } {
-  const fetchUrl = applyUrlRewrites(originalUrl);
-  const wasRewritten = fetchUrl !== originalUrl;
-
-  // Merge caller-supplied headers with our own
-  const callerHeaders = (extra.headers ?? {}) as Record<string, string>;
-  const headers: Record<string, string> = { ...callerHeaders };
-
-  if (!headers["Accept"]) {
-    headers["Accept"] = "application/json";
-  }
-
-  if (wasRewritten) {
-    // Spoof Host so the LMS recognises its own public hostname.
-    // Use the HOST from the *original* (pre-rewrite) URL.
-    headers["Host"] = new URL(originalUrl).host;
-    if (IS_DEV) {
-      console.log(
-        `[LTI Register] URL rewritten: ${originalUrl} → ${fetchUrl} (Host: ${headers["Host"]})`,
-      );
-    }
-  }
-
-  const fetchInit: RequestInit = {
-    ...extra,
-    headers,
-    redirect: "follow",
-  };
-
-  return { fetchUrl, fetchInit };
-}
 
 // ─── OpenID config validation ─────────────────────────────────────────────────
 
@@ -334,7 +263,7 @@ export async function GET(request: NextRequest) {
     // ── 1. Fetch OpenID configuration from the LMS (server-to-server) ─────────
 
     const { fetchUrl: configFetchUrl, fetchInit: configFetchInit } =
-      buildLmsFetchOptions(rawConfigUrl);
+      buildLmsFetchOptions(rawConfigUrl, { headers: { Accept: "application/json" } });
 
     let configRes: Response;
     try {

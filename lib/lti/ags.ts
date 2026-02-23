@@ -1,8 +1,14 @@
 /**
  * Assignment & Grade Services (AGS) — line items and score submission.
+ *
+ * All LMS URLs (lineitems, lineitem, scores, results) come from the LTI
+ * id_token and may use the LMS public hostname. In Docker dev environments
+ * they are rewritten via DEV_LTI_REWRITES so the Next.js server can reach
+ * the LMS container.
  */
 
 import { getAccessToken } from "./oauth";
+import { buildLmsFetchOptions } from "./url-rewrite";
 import type { LineItem, Score } from "./types";
 
 const AGS_SCOPES = [
@@ -16,7 +22,6 @@ const SCORE_SCOPE = "https://purl.imsglobal.org/spec/lti-ags/scope/score";
 
 const LINEITEM_CONTAINER_TYPE =
   "application/vnd.ims.lis.v2.lineitemcontainer+json";
-
 const LINEITEM_TYPE = "application/vnd.ims.lis.v2.lineitem+json";
 const SCORE_TYPE = "application/vnd.ims.lis.v1.score+json";
 const RESULT_CONTAINER_TYPE = "application/vnd.ims.lis.v2.resultcontainer+json";
@@ -48,12 +53,14 @@ export async function getLineItems(
     url = `${url}${sep}tag=${encodeURIComponent(tag)}`;
   }
 
-  const res = await fetch(url, {
+  const { fetchUrl, fetchInit } = buildLmsFetchOptions(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: LINEITEM_CONTAINER_TYPE,
     },
   });
+
+  const res = await fetch(fetchUrl, fetchInit);
 
   if (!res.ok) {
     const errText = await res.text();
@@ -75,7 +82,8 @@ export async function createLineItem(
   const accessToken = await getAgsToken(platformId);
 
   const cleanUrl = lineitemsUrl.split("?")[0];
-  const res = await fetch(cleanUrl, {
+
+  const { fetchUrl, fetchInit } = buildLmsFetchOptions(cleanUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -83,6 +91,8 @@ export async function createLineItem(
     },
     body: JSON.stringify(lineItem),
   });
+
+  const res = await fetch(fetchUrl, fetchInit);
 
   if (!res.ok) {
     const errText = await res.text();
@@ -101,7 +111,6 @@ export async function getScores(
 ): Promise<any[]> {
   const accessToken = await getAgsToken(platformId);
 
-  // Build results URL from lineItemId
   let resultsUrl: string;
   if (lineItemId.includes("?")) {
     const [urlPart, queryPart] = lineItemId.split("?");
@@ -110,12 +119,14 @@ export async function getScores(
     resultsUrl = `${lineItemId}/results`;
   }
 
-  const res = await fetch(resultsUrl, {
+  const { fetchUrl, fetchInit } = buildLmsFetchOptions(resultsUrl, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: RESULT_CONTAINER_TYPE,
     },
   });
+
+  const res = await fetch(fetchUrl, fetchInit);
 
   if (!res.ok) {
     const errText = await res.text();
@@ -136,7 +147,6 @@ export async function submitScore(
 ): Promise<void> {
   const accessToken = await getAgsToken(platformId);
 
-  // Build scores URL from lineItemId
   let scoreUrl: string;
   if (lineItemId.includes("?")) {
     const [urlPart, queryPart] = lineItemId.split("?");
@@ -145,7 +155,7 @@ export async function submitScore(
     scoreUrl = `${lineItemId}/scores`;
   }
 
-  const res = await fetch(scoreUrl, {
+  const { fetchUrl, fetchInit } = buildLmsFetchOptions(scoreUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -153,6 +163,8 @@ export async function submitScore(
     },
     body: JSON.stringify(score),
   });
+
+  const res = await fetch(fetchUrl, fetchInit);
 
   if (!res.ok) {
     const errText = await res.text();
@@ -173,12 +185,10 @@ export async function findOrCreateLineItemAndSubmitScore(
   score: number,
   maxScore: number,
 ): Promise<void> {
-  // Try to find existing line item by tag
   let lineItems: LineItem[] = [];
   try {
     lineItems = await getLineItems(platformId, lineitemsUrl, assessmentId);
   } catch {
-    // If filtered fetch fails, try unfiltered
     try {
       const cleanUrl = lineitemsUrl.split("?")[0];
       lineItems = await getLineItems(platformId, cleanUrl);
@@ -189,7 +199,6 @@ export async function findOrCreateLineItemAndSubmitScore(
 
   let lineItemId: string | null = lineItems.length > 0 ? lineItems[0].id : null;
 
-  // Create if not found
   if (!lineItemId) {
     const newItem = await createLineItem(platformId, lineitemsUrl, {
       scoreMaximum: maxScore,
@@ -200,7 +209,6 @@ export async function findOrCreateLineItemAndSubmitScore(
     lineItemId = newItem.id;
   }
 
-  // Submit the score
   await submitScore(platformId, lineItemId, {
     userId: studentId,
     scoreGiven: score,

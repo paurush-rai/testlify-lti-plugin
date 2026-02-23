@@ -18,8 +18,14 @@ export async function fetchAssessments(
   return Array.isArray(data) ? data : Array.isArray(data.data) ? data.data : [];
 }
 
-export async function fetchMembers(headers: HeadersInit): Promise<Student[]> {
-  const response = await fetch("/api/members", { headers });
+export async function fetchMembers(
+  headers: HeadersInit,
+  role?: string,
+): Promise<Student[]> {
+  const url = role
+    ? `/api/members?role=${encodeURIComponent(role)}`
+    : "/api/members";
+  const response = await fetch(url, { headers });
   if (!response.ok) {
     return [];
   }

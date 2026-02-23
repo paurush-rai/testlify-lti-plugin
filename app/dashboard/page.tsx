@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/lti/Header";
 import AssessmentsTable from "@/components/lti/AssessmentsTable";
@@ -9,7 +9,6 @@ import ViewAssignedModal from "@/components/lti/ViewAssignedModal";
 import {
   fetchUserData,
   fetchAssessments,
-  fetchMembers,
   fetchAssignedStudents,
   getAssessmentId,
 } from "@/lib/api";
@@ -19,6 +18,8 @@ export default function LtiApp() {
   const [user, setUser] = useState<User | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [members, setMembers] = useState<Student[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -31,6 +32,37 @@ export default function LtiApp() {
 
   const searchParams = useSearchParams();
   const ltik = searchParams.get("ltik");
+
+  // Fetch members separately so a NRPS failure doesn't break the whole page.
+  const loadMembers = useCallback(
+    async (role?: string) => {
+      if (!ltik) return;
+      setMembersLoading(true);
+      setMembersError(null);
+      try {
+        const url = role
+          ? `/api/members?role=${encodeURIComponent(role)}`
+          : "/api/members";
+        const res = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${ltik}`,
+          },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.details || data.error || `HTTP ${res.status}`);
+        }
+        setMembers(data.members || []);
+      } catch (err: any) {
+        setMembersError(err.message || "Failed to load course members.");
+        setMembers([]);
+      } finally {
+        setMembersLoading(false);
+      }
+    },
+    [ltik],
+  );
 
   useEffect(() => {
     if (!ltik) {
@@ -45,15 +77,13 @@ export default function LtiApp() {
           Authorization: `Bearer ${ltik}`,
         };
 
-        const [userData, assessmentsData, membersData] = await Promise.all([
+        const [userData, assessmentsData] = await Promise.all([
           fetchUserData(headers),
           fetchAssessments(headers),
-          fetchMembers(headers),
         ]);
 
         setUser(userData);
         setAssessments(assessmentsData);
-        setMembers(membersData);
       } catch (err: any) {
         setError(err.message || "Failed to load LTI session.");
       } finally {
@@ -62,7 +92,9 @@ export default function LtiApp() {
     };
 
     loadData();
-  }, [ltik]);
+    // Members are non-critical; load them in parallel without blocking the page
+    loadMembers();
+  }, [ltik, loadMembers]);
 
   if (loading) {
     return (
@@ -121,6 +153,10 @@ export default function LtiApp() {
             setSelectedAssessment(assessment);
             setSelectedStudents([]);
             setIsAssignModalOpen(true);
+            // Re-fetch members every time the modal opens to get fresh data
+            if (members.length === 0 || membersError) {
+              loadMembers();
+            }
           }}
           onViewAssigned={async (assessment) => {
             setSelectedAssessment(assessment);
@@ -154,6 +190,9 @@ export default function LtiApp() {
         onClose={() => setIsAssignModalOpen(false)}
         assessment={selectedAssessment}
         members={members}
+        membersLoading={membersLoading}
+        membersError={membersError}
+        onRetryMembers={() => loadMembers()}
         selectedStudents={selectedStudents}
         onStudentToggle={(userId) => {
           setSelectedStudents((prev) =>

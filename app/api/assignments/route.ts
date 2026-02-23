@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
 
     const contextId = session.context.id;
     const platformId = session.platformId; // Now string
-    const lineItemUrl = session.ags?.lineitem || session.ags?.lineitems || null;
+    // Always use the lineitems container URL — findOrCreateLineItemAndSubmitScore
+    // needs the container endpoint to search for and create line items.
+    const lineItemUrl = session.ags?.lineitems || null;
 
     await connectToDatabase();
 
