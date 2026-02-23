@@ -127,6 +127,7 @@ function buildRegistrationPayload(
       "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
       "https://purl.imsglobal.org/spec/lti-ags/scope/score",
       "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly",
+      "https://purl.imsglobal.org/spec/lti-ts/scope/toolsetting",
     ].join(" "),
 
     "https://purl.imsglobal.org/spec/lti-tool-configuration": {
