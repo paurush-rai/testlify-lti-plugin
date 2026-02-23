@@ -1,26 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/lti/Header";
 import AssessmentsTable from "@/components/lti/AssessmentsTable";
 import AssignModal from "@/components/lti/AssignModal";
 import ViewAssignedModal from "@/components/lti/ViewAssignedModal";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   fetchUserData,
   fetchAssessments,
+  fetchGroups,
   fetchAssignedStudents,
   getAssessmentId,
 } from "@/lib/api";
-import type { User, Assessment, Student } from "@/types/lti";
+import type { User, Assessment, AssessmentGroup, Student } from "@/types/lti";
 
 export default function LtiApp() {
   const [user, setUser] = useState<User | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [groups, setGroups] = useState<AssessmentGroup[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [selectedGroup, setSelectedGroup] = useState<string>("__all__");
   const [members, setMembers] = useState<Student[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isViewAssignedModalOpen, setIsViewAssignedModalOpen] = useState(false);
@@ -32,6 +44,21 @@ export default function LtiApp() {
 
   const searchParams = useSearchParams();
   const ltik = searchParams.get("ltik");
+
+  const loadAssessments = useCallback(
+    async (group: string, headers: HeadersInit) => {
+      setAssessmentsLoading(true);
+      try {
+        const groupFilter =
+          group && group !== "__all__" ? group : undefined;
+        const data = await fetchAssessments(headers, groupFilter);
+        setAssessments(data);
+      } finally {
+        setAssessmentsLoading(false);
+      }
+    },
+    [],
+  );
 
   // Fetch members separately so a NRPS failure doesn't break the whole page.
   const loadMembers = useCallback(
@@ -77,15 +104,19 @@ export default function LtiApp() {
           Authorization: `Bearer ${ltik}`,
         };
 
-        const [userData, assessmentsData] = await Promise.all([
+        const [userData, assessmentsData, groupsData] = await Promise.all([
           fetchUserData(headers),
           fetchAssessments(headers),
+          fetchGroups(headers),
         ]);
-
+        console.log("groupsData", groupsData);
         setUser(userData);
         setAssessments(assessmentsData);
+        setGroups(groupsData);
+        setGroupsLoading(false);
       } catch (err: any) {
         setError(err.message || "Failed to load LTI session.");
+        setGroupsLoading(false);
       } finally {
         setLoading(false);
       }
@@ -94,7 +125,22 @@ export default function LtiApp() {
     loadData();
     // Members are non-critical; load them in parallel without blocking the page
     loadMembers();
-  }, [ltik, loadMembers]);
+  }, [ltik, loadMembers, loadAssessments]);
+
+  // Refetch assessments when selected group changes (skip on initial mount)
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      return;
+    }
+    if (!ltik) return;
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${ltik}`,
+    };
+    loadAssessments(selectedGroup, headers);
+  }, [selectedGroup, ltik, loadAssessments]);
 
   if (loading) {
     return (
@@ -137,17 +183,37 @@ export default function LtiApp() {
       <Header user={user} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-2xl font-semibold text-gray-900">
             Assessments{" "}
             <span className="text-lg font-normal text-gray-500">
               ({assessments.length} assessments)
             </span>
           </h2>
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedGroup}
+              onValueChange={setSelectedGroup}
+              disabled={groupsLoading || assessmentsLoading}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Groups</SelectItem>
+                {groups.map((group) => (
+                  <SelectItem key={group._id} value={group.groupName}>
+                    {group.groupName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <AssessmentsTable
           assessments={assessments}
+          loading={assessmentsLoading}
           ltik={ltik}
           onAssignClick={(assessment) => {
             setSelectedAssessment(assessment);

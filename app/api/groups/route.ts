@@ -1,5 +1,5 @@
 /**
- * GET /api/assessments — Proxy to Testlify API.
+ * GET /api/groups — Proxy to Testlify assessment group API.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = auth.slice(7);
-    verifySessionToken(token); // validates session
+    verifySessionToken(token);
 
     const testlifyToken = process.env.TESTLIFY_TOKEN;
     if (!testlifyToken) {
@@ -24,22 +24,20 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const group = searchParams.get("group");
+    const query = searchParams.get("query") ?? "";
+    const skip = searchParams.get("skip") ?? "0";
+    const limit = searchParams.get("limit") ?? "50";
+    const inOrder = searchParams.get("inOrder") ?? "asc";
 
-    const apiUrl = new URL("https://api.testlify.com/v1/assessment");
-    apiUrl.searchParams.set("limit", "50");
-    apiUrl.searchParams.set("skip", "0");
-    apiUrl.searchParams.set("colName", "created");
-    apiUrl.searchParams.set("inOrder", "desc");
-    apiUrl.searchParams.set("isArchived", "false");
-    apiUrl.searchParams.set("isEditable", "false");
-    apiUrl.searchParams.set("isActive", "false");
-    apiUrl.searchParams.set("isDraft", "false");
-    if (group) {
-      apiUrl.searchParams.set("groupName", group);
-    }
+    const url = new URL(
+      "https://api.testlify.com/v1/workspace/assessment/group",
+    );
+    url.searchParams.set("query", query);
+    url.searchParams.set("skip", skip);
+    url.searchParams.set("limit", limit);
+    url.searchParams.set("inOrder", inOrder);
 
-    const response = await fetch(apiUrl.toString(), {
+    const response = await fetch(url.toString(), {
       method: "GET",
       headers: {
         Authorization: `Bearer ${testlifyToken}`,
@@ -53,11 +51,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    
     const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data.groupList);
   } catch (err: any) {
     return NextResponse.json(
-      { error: "Failed to fetch assessments", details: err.message },
+      { error: "Failed to fetch groups", details: err.message },
       { status: 500 },
     );
   }

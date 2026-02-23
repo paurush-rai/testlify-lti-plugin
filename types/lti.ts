@@ -21,6 +21,11 @@ export interface Assessment {
   createdBy: string;
 }
 
+export interface AssessmentGroup {
+  _id: string;
+  groupName: string;
+}
+
 export interface Student {
   user_id: string;
   name: string;

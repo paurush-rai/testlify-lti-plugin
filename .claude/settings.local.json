@@ -12,7 +12,8 @@
       "Bash(docker ps:*)",
       "Bash(npx tsc:*)",
       "Bash(node -e:*)",
-      "Bash(docker network:*)"
+      "Bash(docker network:*)",
+      "Bash(npx shadcn@latest add select:*)"
     ]
   }
 }

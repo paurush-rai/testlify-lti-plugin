@@ -30,6 +30,7 @@ import ViewScoresModal from "./ViewScoresModal";
 
 interface AssessmentsTableProps {
   readonly assessments: Assessment[];
+  readonly loading?: boolean;
   readonly ltik: string | null;
   readonly onAssignClick: (assessment: Assessment) => void;
   readonly onViewAssigned: (assessment: Assessment) => void;
@@ -37,6 +38,7 @@ interface AssessmentsTableProps {
 
 export default function AssessmentsTable({
   assessments,
+  loading = false,
   ltik,
   onAssignClick,
   onViewAssigned,
@@ -102,6 +104,102 @@ export default function AssessmentsTable({
     }
   };
 
+  const renderTableContent = () => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5} className="h-32 text-center">
+            <div className="flex flex-col items-center justify-center gap-3 text-gray-500">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+              <p className="text-sm">Loading assessments…</p>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (assessments.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5} className="h-32 text-center text-gray-500">
+            <div className="flex flex-col items-center justify-center">
+              <svg
+                className="h-12 w-12 text-gray-400 mb-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <p className="font-medium text-gray-900">No assessments found</p>
+              <p className="text-sm mt-1">
+                Create a new assessment on Testlify platform to get started.
+              </p>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return assessments.map((assessment, index) => (
+      <TableRow
+        key={getAssessmentId(assessment) || index}
+        className="hover:bg-gray-50"
+      >
+        <TableCell className="font-medium text-gray-900">
+          {assessment.assessmentTitle || "Untitled Assessment"}
+        </TableCell>
+        <TableCell className="text-gray-600">
+          {assessment.totalInvited || 0}
+        </TableCell>
+        <TableCell className="text-gray-600">
+          {assessment.created ? formatDate(assessment.created) : "-"}
+        </TableCell>
+        <TableCell className="text-gray-900">
+          {assessment.createdBy || "Unknown"}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 hover:bg-gray-100 rounded">
+                  <svg
+                    className="h-5 w-5 text-gray-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                  </svg>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onAssignClick(assessment)}>
+                  Assign candidates
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onViewAssigned(assessment)}>
+                  View assigned students
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleInviteClick(assessment)}>
+                  Invite candidates
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleViewScoresClick(assessment)}
+                >
+                  View Scores
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </TableCell>
+      </TableRow>
+    ));
+  };
+
   return (
     <>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -121,98 +219,7 @@ export default function AssessmentsTable({
               <TableHead className="w-20"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {assessments.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="h-32 text-center text-gray-500"
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <svg
-                      className="h-12 w-12 text-gray-400 mb-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <p className="font-medium text-gray-900">
-                      No assessments found
-                    </p>
-                    <p className="text-sm mt-1">
-                      Create a new assessment on Testlify platform to get
-                      started.
-                    </p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              assessments.map((assessment, index) => (
-                <TableRow
-                  key={getAssessmentId(assessment) || index}
-                  className="hover:bg-gray-50"
-                >
-                  <TableCell className="font-medium text-gray-900">
-                    {assessment.assessmentTitle || "Untitled Assessment"}
-                  </TableCell>
-                  <TableCell className="text-gray-600">
-                    {assessment.totalInvited || 0}
-                  </TableCell>
-                  <TableCell className="text-gray-600">
-                    {assessment.created ? formatDate(assessment.created) : "-"}
-                  </TableCell>
-                  <TableCell className="text-gray-900">
-                    {assessment.createdBy || "Unknown"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end space-x-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1 hover:bg-gray-100 rounded">
-                            <svg
-                              className="h-5 w-5 text-gray-500"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
-                            </svg>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleInviteClick(assessment)}
-                          >
-                            Invite candidates
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onAssignClick(assessment)}
-                          >
-                            Assign candidates
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onViewAssigned(assessment)}
-                          >
-                            View assigned students
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleViewScoresClick(assessment)}
-                          >
-                            View Scores
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
+          <TableBody>{renderTableContent()}</TableBody>
         </Table>
       </div>
       <AlertDialog

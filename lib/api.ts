@@ -1,4 +1,4 @@
-import type { User, Assessment, Student } from "@/types/lti";
+import type { User, Assessment, AssessmentGroup, Student } from "@/types/lti";
 
 export async function fetchUserData(headers: HeadersInit): Promise<User> {
   const response = await fetch("/api/me", { headers });
@@ -8,14 +8,34 @@ export async function fetchUserData(headers: HeadersInit): Promise<User> {
 
 export async function fetchAssessments(
   headers: HeadersInit,
+  group?: string,
 ): Promise<Assessment[]> {
-  const response = await fetch("/api/assessments", { headers });
+  const url = group
+    ? `/api/assessments?group=${encodeURIComponent(group)}`
+    : "/api/assessments";
+  const response = await fetch(url, { headers });
   if (!response.ok) {
     return [];
   }
 
   const data = await response.json();
   return Array.isArray(data) ? data : Array.isArray(data.data) ? data.data : [];
+}
+
+export async function fetchGroups(
+  headers: HeadersInit,
+): Promise<AssessmentGroup[]> {
+  const response = await fetch("/api/groups", { headers });
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = await response.json();
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.data)) return data.data;
+  if (Array.isArray(data.groups)) return data.groups;
+  if (data.data && Array.isArray(data.data.groups)) return data.data.groups;
+  return [];
 }
 
 export async function fetchMembers(
