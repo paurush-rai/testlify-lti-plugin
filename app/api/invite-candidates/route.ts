@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/lti/session";
 import connectToDatabase from "@/lib/db";
 import AssessmentAssignment from "@/lib/models/AssessmentAssignment";
+import { getTestlifyToken } from "@/lib/lti/platform-store";
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,10 +53,10 @@ export async function POST(request: NextRequest) {
       candidateGroupId: null,
     }));
 
-    const testlifyToken = process.env.TESTLIFY_TOKEN;
+    const testlifyToken = await getTestlifyToken(session.platformId);
     if (!testlifyToken) {
       return NextResponse.json(
-        { error: "TESTLIFY_TOKEN not configured" },
+        { error: "Testlify token not configured for this platform" },
         { status: 500 },
       );
     }

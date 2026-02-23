@@ -91,7 +91,7 @@ export default function AssignModal({
     if (membersLoading) {
       return (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500" />
           <p className="text-sm text-gray-500">Loading course members…</p>
         </div>
       );

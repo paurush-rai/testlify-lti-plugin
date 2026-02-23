@@ -35,7 +35,7 @@ export default function Header({ user }: HeaderProps) {
                   {user?.roles?.[0]?.split("#").pop() || "Student"}
                 </div>
               </div>
-              <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold border-2 border-indigo-200">
+              <div className="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold border-2 border-brand-200">
                 {user?.name?.charAt(0).toUpperCase() || "U"}
               </div>
             </div>

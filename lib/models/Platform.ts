@@ -7,6 +7,7 @@ export interface IPlatform extends Document {
   auth_login_url: string;
   auth_token_url: string;
   keyset_url: string;
+  testlify_token?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -19,6 +20,7 @@ const PlatformSchema: Schema = new Schema(
     auth_login_url: { type: String, required: true },
     auth_token_url: { type: String, required: true },
     keyset_url: { type: String, required: true },
+    testlify_token: { type: String, default: null },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

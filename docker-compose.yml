@@ -25,7 +25,6 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/lti-plugin
       - LTI_KEY=${LTI_KEY}
       - LTI_WEBHOOK_SECRET=${LTI_WEBHOOK_SECRET}
-      - TESTLIFY_TOKEN=${TESTLIFY_TOKEN}
 
       # ── Browser-facing URL (what users type in their browser) ──────────────
       # Both the user's browser and Moodle's browser-side redirects use this.

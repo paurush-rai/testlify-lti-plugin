@@ -28,7 +28,7 @@ export default function ViewAssignedModal({
     if (loading) {
       return (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500" />
         </div>
       );
     }
@@ -64,7 +64,7 @@ export default function ViewAssignedModal({
             key={student.user_id || index}
             className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200"
           >
-            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
+            <div className="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold">
               {student.name?.charAt(0).toUpperCase() || "S"}
             </div>
             <div className="flex-1">

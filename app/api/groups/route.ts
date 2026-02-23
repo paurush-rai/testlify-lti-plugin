@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/lti/session";
+import { getTestlifyToken } from "@/lib/lti/platform-store";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,13 +14,13 @@ export async function GET(request: NextRequest) {
     }
 
     const token = auth.slice(7);
-    verifySessionToken(token);
+    const session = verifySessionToken(token);
 
-    const testlifyToken = process.env.TESTLIFY_TOKEN;
+    const testlifyToken = await getTestlifyToken(session.platformId);
     if (!testlifyToken) {
       return NextResponse.json(
-        { error: "TESTLIFY_TOKEN not configured" },
-        { status: 500 },
+        { error: "Testlify token not configured for this platform", code: "TOKEN_MISSING" },
+        { status: 422 },
       );
     }
 
@@ -46,12 +47,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `API responded with ${response.status}: ${response.statusText}`,
-      );
+      if (response.status === 401 || response.status === 403) {
+        return NextResponse.json(
+          { error: "Testlify token is invalid or expired", code: "TOKEN_INVALID" },
+          { status: 422 },
+        );
+      }
+      throw new Error(`Testlify API responded with ${response.status}: ${response.statusText}`);
     }
 
-    
     const data = await response.json();
     return NextResponse.json(data.groupList);
   } catch (err: any) {

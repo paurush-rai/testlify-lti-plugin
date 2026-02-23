@@ -110,7 +110,7 @@ export default function AssessmentsTable({
         <TableRow>
           <TableCell colSpan={5} className="h-32 text-center">
             <div className="flex flex-col items-center justify-center gap-3 text-gray-500">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-200 border-t-brand-500" />
               <p className="text-sm">Loading assessments…</p>
             </div>
           </TableCell>

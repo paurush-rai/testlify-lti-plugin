@@ -6,6 +6,7 @@ import Header from "@/components/lti/Header";
 import AssessmentsTable from "@/components/lti/AssessmentsTable";
 import AssignModal from "@/components/lti/AssignModal";
 import ViewAssignedModal from "@/components/lti/ViewAssignedModal";
+import TokenSetupCard from "@/components/lti/TokenSetupCard";
 import {
   Select,
   SelectContent,
@@ -19,8 +20,17 @@ import {
   fetchGroups,
   fetchAssignedStudents,
   getAssessmentId,
+  TokenError,
 } from "@/lib/api";
 import type { User, Assessment, AssessmentGroup, Student } from "@/types/lti";
+
+const INSTRUCTOR_ROLES = ["Instructor", "Administrator"];
+
+function userIsInstructor(roles: string[]): boolean {
+  return roles.some((r) =>
+    INSTRUCTOR_ROLES.some((ir) => r.includes(ir)),
+  );
+}
 
 export default function LtiApp() {
   const [user, setUser] = useState<User | null>(null);
@@ -34,6 +44,10 @@ export default function LtiApp() {
   const [loading, setLoading] = useState(true);
   const [assessmentsLoading, setAssessmentsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Token setup state
+  const [tokenConfigured, setTokenConfigured] = useState<boolean | null>(null);
+
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isViewAssignedModalOpen, setIsViewAssignedModalOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] =
@@ -104,18 +118,35 @@ export default function LtiApp() {
           Authorization: `Bearer ${ltik}`,
         };
 
+        // Check token status first so we know whether to fetch the full data
+        const tokenRes = await fetch("/api/token", { headers });
+        const tokenData = await tokenRes.json();
+        const hasToken = tokenData.configured === true;
+        setTokenConfigured(hasToken);
+
+        if (!hasToken) {
+          // Token not set — fetch only user data so we know the role
+          const userData = await fetchUserData(headers);
+          setUser(userData);
+          return;
+        }
+
         const [userData, assessmentsData, groupsData] = await Promise.all([
           fetchUserData(headers),
           fetchAssessments(headers),
           fetchGroups(headers),
         ]);
-        console.log("groupsData", groupsData);
         setUser(userData);
         setAssessments(assessmentsData);
         setGroups(groupsData);
         setGroupsLoading(false);
       } catch (err: any) {
-        setError(err.message || "Failed to load LTI session.");
+        if (err instanceof TokenError) {
+          // Token missing or rejected by Testlify — fall back to setup card
+          setTokenConfigured(false);
+        } else {
+          setError(err.message || "Failed to load LTI session.");
+        }
         setGroupsLoading(false);
       } finally {
         setLoading(false);
@@ -134,18 +165,47 @@ export default function LtiApp() {
       initialLoadDone.current = true;
       return;
     }
-    if (!ltik) return;
+    if (!ltik || !tokenConfigured) return;
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${ltik}`,
     };
     loadAssessments(selectedGroup, headers);
-  }, [selectedGroup, ltik, loadAssessments]);
+  }, [selectedGroup, ltik, loadAssessments, tokenConfigured]);
+
+  // Called after instructor saves the token — reload full data
+  const handleTokenSaved = async () => {
+    if (!ltik) return;
+    setLoading(true);
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ltik}`,
+      };
+      const [assessmentsData, groupsData] = await Promise.all([
+        fetchAssessments(headers),
+        fetchGroups(headers),
+      ]);
+      setAssessments(assessmentsData);
+      setGroups(groupsData);
+      setGroupsLoading(false);
+      setTokenConfigured(true);
+    } catch (err: any) {
+      if (err instanceof TokenError) {
+        // Token was rejected by Testlify — keep setup card open so user can retry
+        setTokenConfigured(false);
+      } else {
+        setError(err.message || "Failed to load assessments.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500" />
       </div>
     );
   }
@@ -174,6 +234,24 @@ export default function LtiApp() {
           </h2>
           <p className="text-gray-600">{error}</p>
         </div>
+      </div>
+    );
+  }
+
+  const isInstructor = userIsInstructor(user?.roles ?? []);
+
+  // Token not yet configured — show setup card instead of the table
+  if (tokenConfigured === false) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header user={user} />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <TokenSetupCard
+            ltik={ltik!}
+            onTokenSaved={handleTokenSaved}
+            isInstructor={isInstructor}
+          />
+        </main>
       </div>
     );
   }

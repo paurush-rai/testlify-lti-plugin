@@ -6,6 +6,15 @@ export async function fetchUserData(headers: HeadersInit): Promise<User> {
   return response.json();
 }
 
+export class TokenError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+    this.name = "TokenError";
+  }
+}
+
 export async function fetchAssessments(
   headers: HeadersInit,
   group?: string,
@@ -15,6 +24,13 @@ export async function fetchAssessments(
     : "/api/assessments";
   const response = await fetch(url, { headers });
   if (!response.ok) {
+    // Propagate token errors so the dashboard can react (show setup card)
+    if (response.status === 422) {
+      const data = await response.json().catch(() => ({}));
+      if (data.code === "TOKEN_MISSING" || data.code === "TOKEN_INVALID") {
+        throw new TokenError(data.code, data.error);
+      }
+    }
     return [];
   }
 
@@ -27,6 +43,12 @@ export async function fetchGroups(
 ): Promise<AssessmentGroup[]> {
   const response = await fetch("/api/groups", { headers });
   if (!response.ok) {
+    if (response.status === 422) {
+      const data = await response.json().catch(() => ({}));
+      if (data.code === "TOKEN_MISSING" || data.code === "TOKEN_INVALID") {
+        throw new TokenError(data.code, data.error);
+      }
+    }
     return [];
   }
 

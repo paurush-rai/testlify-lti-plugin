@@ -9,6 +9,7 @@ export interface Platform {
   auth_login_url: string;
   auth_token_url: string;
   keyset_url: string;
+  testlify_token?: string | null;
   created_at?: Date;
   updated_at?: Date;
 }

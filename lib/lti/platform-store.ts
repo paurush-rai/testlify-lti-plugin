@@ -16,6 +16,7 @@ function mapDoc(doc: any): Platform {
     auth_login_url: doc.auth_login_url,
     auth_token_url: doc.auth_token_url,
     keyset_url: doc.keyset_url,
+    testlify_token: doc.testlify_token ?? null,
     created_at: doc.created_at,
     updated_at: doc.updated_at,
   };
@@ -70,4 +71,39 @@ export async function upsertPlatform(platform: {
   });
 
   return mapDoc(doc);
+}
+
+/** Save (or update) the Testlify API token for a specific platform */
+export async function updatePlatformToken(
+  platformId: string,
+  testlifyToken: string,
+): Promise<boolean> {
+  await connectToDatabase();
+  try {
+    // $set + strict:false bypasses Mongoose schema-caching issues in dev (HMR)
+    // so the field is written to MongoDB even if the cached model predates the schema change.
+    const result = await PlatformModel.findByIdAndUpdate(
+      platformId,
+      { $set: { testlify_token: testlifyToken, updated_at: new Date() } },
+      { new: true, strict: false },
+    );
+    return result !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** Retrieve the Testlify token for a platform (stored in MongoDB). */
+export async function getTestlifyToken(platformId: string): Promise<string | null> {
+  await connectToDatabase();
+  try {
+    // .lean() returns the raw MongoDB document, bypassing Mongoose schema
+    // restrictions — safe even when the model is a cached pre-migration version.
+    const doc = await PlatformModel.findById(platformId)
+      .select("testlify_token")
+      .lean<{ testlify_token?: string }>();
+    return doc?.testlify_token ?? null;
+  } catch {
+    return null;
+  }
 }
