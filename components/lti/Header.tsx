@@ -37,11 +37,13 @@ export default function Header({
   onTokenSaved,
 }: HeaderProps) {
   const initials = user?.name?.charAt(0).toUpperCase() ?? "U";
-  const allRoles = [
-    ...new Set(
-      user?.roles?.map((r) => r.split("#").pop()).filter(Boolean) ?? [],
+  const allRoles = Array.from(
+    new Set(
+      user?.roles
+        ?.map((r) => r.split("#").pop())
+        .filter((r): r is string => Boolean(r)) ?? [],
     ),
-  ];
+  );
 
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [token, setToken] = useState("");
