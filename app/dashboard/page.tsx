@@ -19,15 +19,21 @@ import {
   fetchAssessments,
   fetchGroups,
   fetchAssignedStudents,
+  fetchStudentAssignmentIds,
   getAssessmentId,
   TokenError,
 } from "@/lib/api";
 import type { User, Assessment, AssessmentGroup, Student } from "@/types/lti";
 
 const INSTRUCTOR_ROLES = ["Instructor", "Administrator"];
+const LEARNER_ROLES = ["Learner", "Observer"];
 
 function userIsInstructor(roles: string[]): boolean {
   return roles.some((r) => INSTRUCTOR_ROLES.some((ir) => r.includes(ir)));
+}
+
+function userIsLearner(roles: string[]): boolean {
+  return roles.some((r) => LEARNER_ROLES.some((lr) => r.includes(lr)));
 }
 
 export default function LtiApp() {
@@ -128,15 +134,29 @@ export default function LtiApp() {
           return;
         }
 
-        const [userData, assessmentsData, groupsData] = await Promise.all([
-          fetchUserData(headers),
-          fetchAssessments(headers),
-          fetchGroups(headers),
-        ]);
+        const userData = await fetchUserData(headers);
         setUser(userData);
-        setAssessments(assessmentsData);
-        setGroups(groupsData);
-        setGroupsLoading(false);
+
+        if (userIsLearner(userData.roles)) {
+          // Learner/Observer — only show assessments assigned to them
+          const [assessmentsData, assignedIds] = await Promise.all([
+            fetchAssessments(headers),
+            fetchStudentAssignmentIds(headers),
+          ]);
+          const filtered = assessmentsData.filter((a) => {
+            const id = getAssessmentId(a);
+            return id && assignedIds.includes(id);
+          });
+          setAssessments(filtered);
+        } else {
+          const [assessmentsData, groupsData] = await Promise.all([
+            fetchAssessments(headers),
+            fetchGroups(headers),
+          ]);
+          setAssessments(assessmentsData);
+          setGroups(groupsData);
+          setGroupsLoading(false);
+        }
       } catch (err: any) {
         if (err instanceof TokenError) {
           // Token missing or rejected by Testlify — fall back to setup card
@@ -236,6 +256,7 @@ export default function LtiApp() {
   }
 
   const isInstructor = userIsInstructor(user?.roles ?? []);
+  const isLearner = userIsLearner(user?.roles ?? []);
 
   // Token not yet configured — show setup card instead of the table
   if (tokenConfigured === false) {
@@ -265,31 +286,34 @@ export default function LtiApp() {
               ({assessments.length} assessments)
             </span>
           </h2>
-          <div className="flex items-center gap-2">
-            <Select
-              value={selectedGroup}
-              onValueChange={setSelectedGroup}
-              disabled={groupsLoading || assessmentsLoading}
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="All Groups" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Groups</SelectItem>
-                {groups.map((group) => (
-                  <SelectItem key={group._id} value={group.groupName}>
-                    {group.groupName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isLearner && (
+            <div className="flex items-center gap-2">
+              <Select
+                value={selectedGroup}
+                onValueChange={setSelectedGroup}
+                disabled={groupsLoading || assessmentsLoading}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Groups" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Groups</SelectItem>
+                  {groups.map((group) => (
+                    <SelectItem key={group._id} value={group.groupName}>
+                      {group.groupName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <AssessmentsTable
           assessments={assessments}
           loading={assessmentsLoading}
           ltik={ltik}
+          isLearner={isLearner}
           onAssignClick={async (assessment) => {
             setSelectedAssessment(assessment);
             setSelectedStudents([]);

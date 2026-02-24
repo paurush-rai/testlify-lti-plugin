@@ -1,4 +1,5 @@
 /**
+ * GET  /api/assignments — Fetch assessment IDs assigned to the current student.
  * POST /api/assignments — Create assignment records.
  */
 
@@ -6,6 +7,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/lti/session";
 import connectToDatabase from "@/lib/db";
 import AssessmentAssignment from "@/lib/models/AssessmentAssignment";
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = request.headers.get("authorization");
+    if (!auth?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const session = verifySessionToken(auth.slice(7));
+    await connectToDatabase();
+
+    const assignments = await AssessmentAssignment.find({
+      studentId: session.sub,
+      contextId: session.context.id,
+    }).select("assessmentId");
+
+    const assessmentIds = assignments.map((a) => a.assessmentId);
+    return NextResponse.json({ assessmentIds });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: "Failed to fetch assignments", details: err.message },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

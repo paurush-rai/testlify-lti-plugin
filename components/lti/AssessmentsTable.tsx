@@ -32,6 +32,7 @@ interface AssessmentsTableProps {
   readonly assessments: Assessment[];
   readonly loading?: boolean;
   readonly ltik: string | null;
+  readonly isLearner?: boolean;
   readonly onAssignClick: (assessment: Assessment) => void;
   readonly onViewAssigned: (assessment: Assessment) => void;
 }
@@ -40,6 +41,7 @@ export default function AssessmentsTable({
   assessments,
   loading = false,
   ltik,
+  isLearner = false,
   onAssignClick,
   onViewAssigned,
 }: AssessmentsTableProps) {
@@ -104,11 +106,13 @@ export default function AssessmentsTable({
     }
   };
 
+  const colSpan = isLearner ? 4 : 5;
+
   const renderTableContent = () => {
     if (loading) {
       return (
         <TableRow>
-          <TableCell colSpan={5} className="h-32 text-center">
+          <TableCell colSpan={colSpan} className="h-32 text-center">
             <div className="flex flex-col items-center justify-center gap-3 text-gray-500">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-200 border-t-brand-500" />
               <p className="text-sm">Loading assessments…</p>
@@ -121,7 +125,7 @@ export default function AssessmentsTable({
     if (assessments.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={5} className="h-32 text-center text-gray-500">
+          <TableCell colSpan={colSpan} className="h-32 text-center text-gray-500">
             <div className="flex flex-col items-center justify-center">
               <svg
                 className="h-12 w-12 text-gray-400 mb-2"
@@ -136,10 +140,21 @@ export default function AssessmentsTable({
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <p className="font-medium text-gray-900">No assessments found</p>
-              <p className="text-sm mt-1">
-                Create a new assessment on Testlify platform to get started.
-              </p>
+              {isLearner ? (
+                <>
+                  <p className="font-medium text-gray-900">No assessments assigned</p>
+                  <p className="text-sm mt-1">
+                    You have not been assigned to any assessments yet. Please contact your instructor.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-gray-900">No assessments found</p>
+                  <p className="text-sm mt-1">
+                    Create a new assessment on Testlify platform to get started.
+                  </p>
+                </>
+              )}
             </div>
           </TableCell>
         </TableRow>
@@ -154,9 +169,11 @@ export default function AssessmentsTable({
         <TableCell className="font-medium text-gray-900">
           {assessment.assessmentTitle || "Untitled Assessment"}
         </TableCell>
-        <TableCell className="text-gray-600">
-          {assessment.totalInvited || 0}
-        </TableCell>
+        {!isLearner && (
+          <TableCell className="text-gray-600">
+            {assessment.totalInvited || 0}
+          </TableCell>
+        )}
         <TableCell className="text-gray-600">
           {assessment.created ? formatDate(assessment.created) : "-"}
         </TableCell>
@@ -178,15 +195,19 @@ export default function AssessmentsTable({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onAssignClick(assessment)}>
-                  Assign candidates
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onViewAssigned(assessment)}>
-                  View assigned candidates
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleInviteClick(assessment)}>
-                  Invite candidates
-                </DropdownMenuItem>
+                {!isLearner && (
+                  <>
+                    <DropdownMenuItem onClick={() => onAssignClick(assessment)}>
+                      Assign candidates
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onViewAssigned(assessment)}>
+                      View assigned candidates
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleInviteClick(assessment)}>
+                      Invite candidates
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem
                   onClick={() => handleViewScoresClick(assessment)}
                 >
@@ -207,9 +228,11 @@ export default function AssessmentsTable({
           <TableHeader>
             <TableRow className="bg-gray-50">
               <TableHead className="font-medium text-gray-700">NAME</TableHead>
-              <TableHead className="font-medium text-gray-700">
-                TOTAL INVITED
-              </TableHead>
+              {!isLearner && (
+                <TableHead className="font-medium text-gray-700">
+                  TOTAL INVITED
+                </TableHead>
+              )}
               <TableHead className="font-medium text-gray-700">
                 CREATED ON
               </TableHead>

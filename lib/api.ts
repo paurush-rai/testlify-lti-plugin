@@ -100,6 +100,15 @@ export async function assignStudents(
   return response.json();
 }
 
+export async function fetchStudentAssignmentIds(
+  headers: HeadersInit,
+): Promise<string[]> {
+  const response = await fetch("/api/assignments", { headers });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return data.assessmentIds ?? [];
+}
+
 export async function fetchAssignedStudents(
   assessmentId: string,
   headers: HeadersInit,
