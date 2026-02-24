@@ -21,9 +21,11 @@ import { getAssessmentId } from "@/lib/api";
 
 interface Score {
   userId: string;
+  userName: string | null;
+  userEmail: string | null;
   scoreGiven: number;
   scoreMaximum: number;
-  comment?: string;
+  comment?: string | null;
   timestamp: string;
   activityProgress: string;
   gradingProgress: string;
@@ -129,17 +131,33 @@ export default function ViewScoresModal({
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead>User ID</TableHead>
+              <TableHead>Student</TableHead>
               <TableHead>Score</TableHead>
               <TableHead>Max</TableHead>
               <TableHead>Progress</TableHead>
+              <TableHead>Comment</TableHead>
               <TableHead>Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {scores.map((score, index) => (
               <TableRow key={index}>
-                <TableCell className="font-medium">{score.userId}</TableCell>
+                <TableCell>
+                  {score.userName ? (
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {score.userName}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {score.userEmail || score.userId}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="font-medium text-gray-900">
+                      {score.userId}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <span className="font-bold text-gray-900">
                     {score.scoreGiven}
@@ -157,6 +175,9 @@ export default function ViewScoresModal({
                     {score.activityProgress}
                   </span>
                 </TableCell>
+                <TableCell className="text-gray-500 text-sm max-w-[160px] truncate">
+                  {score.comment || <span className="text-gray-300">—</span>}
+                </TableCell>
                 <TableCell className="text-gray-500 text-sm">
                   {new Date(score.timestamp).toLocaleDateString()}
                 </TableCell>
@@ -170,7 +191,7 @@ export default function ViewScoresModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>Assessment Scores</DialogTitle>
           <DialogDescription>

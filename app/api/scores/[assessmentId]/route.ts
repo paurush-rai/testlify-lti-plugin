@@ -1,10 +1,12 @@
 /**
- * GET /api/scores/:assessmentId — Fetch scores from LMS via AGS.
+ * GET /api/scores/:assessmentId — Fetch scores from LMS via AGS,
+ * enriched with member name/email via NRPS.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/lti/session";
 import { getLineItems, getScores } from "@/lib/lti/ags";
+import { getMembers } from "@/lib/lti/nrps";
 
 export async function GET(
   request: NextRequest,
@@ -41,13 +43,39 @@ export async function GET(
     // Fetch scores/results from the line item
     const rawScores = await getScores(session.platformId, lineItemId);
 
-    const mappedScores = rawScores.map((s: any) => ({
-      ...s,
-      scoreGiven: s.resultScore ?? s.scoreGiven,
-      scoreMaximum: s.resultMaximum ?? s.scoreMaximum,
-      activityProgress: s.resultScore ? "Completed" : "Initialized",
-      gradingProgress: s.gradingProgress || "FullyGraded",
-    }));
+    // Enrich with name/email from NRPS — non-fatal if NRPS is unavailable
+    let memberMap: Record<string, { name: string; email: string }> = {};
+    try {
+      if (session.nrps?.context_memberships_url) {
+        const members = await getMembers(session, "all");
+        for (const m of members) {
+          memberMap[m.user_id] = {
+            name: m.name || "",
+            email: m.email || "",
+          };
+        }
+      }
+    } catch {
+      // NRPS failure is non-fatal — scores still shown without name/email
+    }
+
+    const mappedScores = rawScores.map((s: any) => {
+      const member = memberMap[s.userId] ?? {};
+      return {
+        userId: s.userId,
+        userName: member.name || null,
+        userEmail: member.email || null,
+        scoreGiven: s.resultScore ?? s.scoreGiven,
+        scoreMaximum: s.resultMaximum ?? s.scoreMaximum,
+        comment: s.comment || null,
+        timestamp: s.timestamp,
+        activityProgress:
+          s.resultScore !== undefined
+            ? "Completed"
+            : s.activityProgress || "Initialized",
+        gradingProgress: s.gradingProgress || "FullyGraded",
+      };
+    });
 
     return NextResponse.json({ scores: mappedScores });
   } catch (err: any) {
