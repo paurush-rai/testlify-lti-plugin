@@ -124,47 +124,39 @@ export default function Header({
 
                   <DropdownMenuSeparator className="my-0" />
 
-                  <div className="px-4 py-3 space-y-3">
+                  <div className="px-4 py-1">
                     {/* Roles */}
-                    <div className="space-y-1.5">
-                      <DropdownMenuLabel className="px-0 py-0 text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Roles
-                      </DropdownMenuLabel>
-                      <div className="flex flex-wrap gap-1.5">
-                        {allRoles.length > 0 ? (
-                          allRoles.map((r) => (
-                            <Badge
-                              key={r}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {r}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            —
-                          </span>
-                        )}
+                    <div className="flex items-start gap-3 py-2.5">
+                      <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground mb-1.5">Roles</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {allRoles.length > 0 ? (
+                            allRoles.map((r) => (
+                              <Badge key={r} variant="secondary" className="text-xs font-normal">
+                                {r}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <DropdownMenuSeparator />
 
                     {/* Course */}
-                    <div className="flex items-start gap-2 text-sm">
+                    <div className="flex items-start gap-3 py-2.5">
                       <BookOpen className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground mb-0.5">Course</p>
+                        <p className="text-sm font-medium text-foreground truncate">
                           {user?.context?.context?.title ?? "—"}
                         </p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Hash className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs font-mono text-muted-foreground">
-                            {user?.context?.context?.id ?? "—"}
-                          </span>
-                        </div>
+                        <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                          ID: {user?.context?.context?.id ?? "—"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -173,13 +165,13 @@ export default function Header({
                   {isInstructor && ltik && (
                     <>
                       <DropdownMenuSeparator className="my-0" />
-                      <div className="px-2 py-2">
+                      <div className="px-2 py-1.5">
                         <DropdownMenuItem
                           onSelect={() => setTokenDialogOpen(true)}
-                          className="flex items-center gap-2 cursor-pointer"
+                          className="flex items-center gap-3 cursor-pointer px-2 py-2"
                         >
-                          <KeyRound className="h-4 w-4" />
-                          Update Testlify Access Token
+                          <KeyRound className="h-4 w-4 shrink-0" />
+                          <span className="text-sm">Update Testlify Access Token</span>
                         </DropdownMenuItem>
                       </div>
                     </>
