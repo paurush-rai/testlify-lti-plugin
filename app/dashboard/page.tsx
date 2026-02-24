@@ -27,9 +27,7 @@ import type { User, Assessment, AssessmentGroup, Student } from "@/types/lti";
 const INSTRUCTOR_ROLES = ["Instructor", "Administrator"];
 
 function userIsInstructor(roles: string[]): boolean {
-  return roles.some((r) =>
-    INSTRUCTOR_ROLES.some((ir) => r.includes(ir)),
-  );
+  return roles.some((r) => INSTRUCTOR_ROLES.some((ir) => r.includes(ir)));
 }
 
 export default function LtiApp() {
@@ -63,8 +61,7 @@ export default function LtiApp() {
     async (group: string, headers: HeadersInit) => {
       setAssessmentsLoading(true);
       try {
-        const groupFilter =
-          group && group !== "__all__" ? group : undefined;
+        const groupFilter = group && group !== "__all__" ? group : undefined;
         const data = await fetchAssessments(headers, groupFilter);
         setAssessments(data);
       } finally {
@@ -244,7 +241,7 @@ export default function LtiApp() {
   if (tokenConfigured === false) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header user={user} />
+        <Header user={user} ltik={ltik} isInstructor={isInstructor} onTokenSaved={handleTokenSaved} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <TokenSetupCard
             ltik={ltik!}
@@ -258,7 +255,7 @@ export default function LtiApp() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} ltik={ltik} isInstructor={isInstructor} onTokenSaved={handleTokenSaved} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -293,13 +290,36 @@ export default function LtiApp() {
           assessments={assessments}
           loading={assessmentsLoading}
           ltik={ltik}
-          onAssignClick={(assessment) => {
+          onAssignClick={async (assessment) => {
             setSelectedAssessment(assessment);
             setSelectedStudents([]);
             setIsAssignModalOpen(true);
             // Re-fetch members every time the modal opens to get fresh data
             if (members.length === 0 || membersError) {
               loadMembers();
+            }
+
+            // Fetch already assigned students so they can be disabled
+            setLoadingAssigned(true);
+            try {
+              const assessmentId = getAssessmentId(assessment);
+              if (assessmentId && ltik) {
+                const headers = {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${ltik}`,
+                };
+                const students = await fetchAssignedStudents(
+                  assessmentId,
+                  headers,
+                );
+                setAssignedStudents(students);
+              }
+            } catch (err) {
+              console.error("Failed to fetch assigned students:", err);
+              // reset them on error so we don't accidentally disable wrong people
+              setAssignedStudents([]);
+            } finally {
+              setLoadingAssigned(false);
             }
           }}
           onViewAssigned={async (assessment) => {
@@ -345,12 +365,19 @@ export default function LtiApp() {
               : [...prev, userId],
           );
         }}
-        onSelectAll={() => {
-          setSelectedStudents(
-            selectedStudents.length === members.length
-              ? []
-              : members.map((m) => m.user_id),
-          );
+        onSelectAll={(filteredIds) => {
+          setSelectedStudents((prev) => {
+            const allSelected =
+              filteredIds.length > 0 &&
+              filteredIds.every((id) => prev.includes(id));
+
+            if (allSelected) {
+              return prev.filter((id) => !filteredIds.includes(id));
+            } else {
+              const newSelected = new Set([...prev, ...filteredIds]);
+              return Array.from(newSelected);
+            }
+          });
         }}
         onSubmit={() => {
           setIsAssignModalOpen(false);
@@ -358,6 +385,8 @@ export default function LtiApp() {
           setSelectedAssessment(null);
         }}
         ltik={ltik}
+        alreadyAssignedIds={assignedStudents.map((s) => s.user_id)}
+        assignedLoading={loadingAssigned}
       />
 
       <ViewAssignedModal

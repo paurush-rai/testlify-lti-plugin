@@ -1,3 +1,4 @@
+import { useState, useMemo, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Assessment, Student } from "@/types/lti";
 
 interface ViewAssignedModalProps {
@@ -24,6 +26,24 @@ export default function ViewAssignedModal({
   students,
   loading,
 }: ViewAssignedModalProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
+
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    const lowerQuery = searchQuery.trim().toLowerCase();
+    return students.filter(
+      (s) =>
+        s.name?.toLowerCase().includes(lowerQuery) ||
+        s.email?.toLowerCase().includes(lowerQuery),
+    );
+  }, [students, searchQuery]);
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -58,21 +78,40 @@ export default function ViewAssignedModal({
     }
 
     return (
-      <div className="space-y-3">
-        {students.map((student, index) => (
-          <div
-            key={student.user_id || index}
-            className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200"
-          >
-            <div className="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold">
-              {student.name?.charAt(0).toUpperCase() || "S"}
-            </div>
-            <div className="flex-1">
-              <div className="font-medium text-gray-900">{student.name}</div>
-              <div className="text-sm text-gray-500">{student.email}</div>
-            </div>
+      <div className="space-y-4">
+        <div className="px-1 sticky top-0 bg-white z-10 pb-4 pt-1">
+          <Input
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+        </div>
+
+        {filteredStudents.length === 0 ? (
+          <p className="text-center text-gray-500 py-4">
+            No candidates match your search.
+          </p>
+        ) : (
+          <div className="space-y-3 px-1">
+            {filteredStudents.map((student, index) => (
+              <div
+                key={student.user_id || index}
+                className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200"
+              >
+                <div className="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold">
+                  {student.name?.charAt(0).toUpperCase() || "S"}
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">
+                    {student.name}
+                  </div>
+                  <div className="text-sm text-gray-500">{student.email}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     );
   };
@@ -87,7 +126,7 @@ export default function ViewAssignedModal({
             {assessment?.assessmentTitle || "this assessment"}"
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[400px] overflow-y-auto py-4">
+        <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
           {renderContent()}
         </div>
         <DialogFooter>

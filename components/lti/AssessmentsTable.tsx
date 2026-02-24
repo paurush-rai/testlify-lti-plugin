@@ -182,7 +182,7 @@ export default function AssessmentsTable({
                   Assign candidates
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onViewAssigned(assessment)}>
-                  View assigned students
+                  View assigned candidates
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleInviteClick(assessment)}>
                   Invite candidates

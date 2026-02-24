@@ -64,33 +64,41 @@ export async function POST(request: NextRequest) {
     const inviteUrl =
       "https://api.testlify.com/v1/assessment/candidate/invites";
 
-    const response = await fetch(inviteUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${testlifyToken}`,
-        "Content-Type": "application/json",
-        Accept: "*/*",
-        "production-testing": "false",
-      },
-      body: JSON.stringify({
-        candidateInvites,
-        assessmentId,
-      }),
-    });
+    const BATCH_SIZE = 25;
+    const results = [];
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Testlify API responded with ${response.status}: ${errorText}`,
-      );
+    for (let i = 0; i < candidateInvites.length; i += BATCH_SIZE) {
+      const batch = candidateInvites.slice(i, i + BATCH_SIZE);
+
+      const response = await fetch(inviteUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${testlifyToken}`,
+          "Content-Type": "application/json",
+          Accept: "*/*",
+          "production-testing": "false",
+        },
+        body: JSON.stringify({
+          candidateInvites: batch,
+          assessmentId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Testlify API responded with ${response.status} on batch ${Math.floor(i / BATCH_SIZE) + 1}: ${errorText}`,
+        );
+      }
+
+      const batchData = await response.json();
+      results.push(batchData);
     }
-
-    const responseData = await response.json();
 
     return NextResponse.json({
       success: true,
       invitedCount: assignments.length,
-      result: responseData,
+      result: results,
     });
   } catch (err: any) {
     return NextResponse.json(
